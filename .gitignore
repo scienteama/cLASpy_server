@@ -1,0 +1,63 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.env.*
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+wheels/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs, coverage, caches
+*.log
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Packaging
+*.egg
+.eggs/
+
+# Common data / uploaded files
+uploads/
+data/
+storage/
+
+# C extensions
+*.so
+*.pyd
+
+# Uvicorn / FastAPI runtime logs
+uvicorn.log
+
+# Optional: lock files / secrets
+*.env.local
+secrets.json
+credentials.json
