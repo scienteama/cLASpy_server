@@ -173,3 +173,29 @@ async def rename_path(item_id: str, new_name: str) -> bool:
     except Exception as e:
         print(f"Erreur renommage {path} -> {new_name}: {e}")
         return False
+    
+async def create_directory(name: str, subPath: str) -> bool:
+    """
+    Crée un nouveau dossier à l'emplacement spécifié.
+
+    :param name: Nom du nouveau dossier
+    :param subPath: Chemin relatif où créer le dossier (ex: 'docs/2025/')
+    :return: Booléen indiquant le succès de l'opération
+    """
+    # Calcul du dossier cible
+    safe_sub_path = (subPath or "").lstrip("/\\")
+    target_dir = UPLOAD_DIR / safe_sub_path / name
+
+    resolved_target = target_dir.resolve()
+    if not str(resolved_target).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid target path")
+
+    try:
+        resolved_target.mkdir(parents=True, exist_ok=False)
+        return True
+    except FileExistsError:
+        print(f"Le dossier {resolved_target} existe déjà.")
+        return False
+    except Exception as e:
+        print(f"Erreur création dossier {resolved_target}: {e}")
+        return False

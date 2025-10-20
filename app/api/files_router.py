@@ -37,5 +37,15 @@ async def rename_file_or_folder(item_id: str, new_name: str = Body(..., embed=Tr
     print(new_name)
     return await fileService.rename_path(item_id, new_name)
 
+@router.post("/create-directory", response_model=bool)
+async def create_directory(
+    name: str = Body(...),
+    subPath: str = Body(...)
+):
+    """
+    Crée un nouveau dossier à l'emplacement spécifié.
+    """
+    return await fileService.create_directory(name, subPath)
+
 
 
