@@ -9,7 +9,7 @@ class ClaspyMLService:
     """
     Service pour interagir avec le plugin cLASpy_ML.
     """
-
+    
     def __init__(self):
         if cLASpy_ML != None:
             self.plugin = cLASpy_ML
