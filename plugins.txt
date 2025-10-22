@@ -1,0 +1,1 @@
+git+ssh://git@scienteama.local:22/developpeurs/claspy_t.git@test_setup_vg#egg=cLASpy_ML

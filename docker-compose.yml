@@ -1,0 +1,20 @@
+# deploy with portainerized Postgres for production
+services:
+  db-prod:
+    image: postgres
+    container_name: claspy_db
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - claspy_db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - TZ=Europe/Paris
+
+volumes:
+  claspy_db_data:
+
+

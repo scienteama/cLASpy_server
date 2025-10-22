@@ -7,195 +7,154 @@ import mimetypes
 import uuid
 from fastapi import HTTPException, UploadFile
 from app.schemas.file_schema import FileModel, FolderModel
-from app.utils.file_utils import detect_mimetype
+from app.utils.file_utils import detect_mimetype, extract_true_name
 
-
-# --- Dossier de base ---
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-
-
-# --- Utilitaires ---
-def generate_id_from_path(path: Path) -> str:
+class FileService:
     """
-    Génère un identifiant basé sur le chemin absolu du fichier/dossier.
+    Service métier pour la gestion des fichiers et dossiers.
     """
-    return hashlib.sha1(str(path.resolve()).encode()).hexdigest()
+    
+    def __init__(self, upload_dir: Path | str = "uploads"):
+        self.upload_dir = Path(upload_dir)
+        self.upload_dir.mkdir(exist_ok=True)
 
+    # --- UTILITAIRES ---
 
-async def find_path_by_id(item_id: str) -> Path | None:
-    """
-    Recherche un fichier ou un dossier à partir de son ID (hash path).
-    """
-    for root, dirs, files in os.walk(UPLOAD_DIR, topdown=False):
-        root_path = Path(root)
+    def _generate_id_from_path(self, path: Path) -> str:
+        """Génère un identifiant unique basé sur le chemin absolu."""
+        return hashlib.sha1(str(path.resolve()).encode()).hexdigest()
 
-        # Fichiers
-        for file_name in files:
-            file_path = root_path / file_name
-            if generate_id_from_path(file_path) == item_id:
-                return file_path
+    async def _find_path_by_id(self, item_id: str) -> Path | None:
+        """Recherche un fichier ou dossier à partir de son identifiant."""
+        for root, dirs, files in os.walk(self.upload_dir, topdown=False):
+            root_path = Path(root)
+            for file_name in files:
+                file_path = root_path / file_name
+                if self._generate_id_from_path(file_path) == item_id:
+                    return file_path
+            for dir_name in dirs:
+                dir_path = root_path / dir_name
+                if self._generate_id_from_path(dir_path) == item_id:
+                    return dir_path
+        return None
 
-        # Dossiers
-        for dir_name in dirs:
-            dir_path = root_path / dir_name
-            if generate_id_from_path(dir_path) == item_id:
-                return dir_path
+    # --- MÉTHODES ---
 
-    return None
+    async def save_file(self, file: UploadFile, sub_path: str | None = None) -> FileModel:
+        """Sauvegarde un fichier sur disque et retourne ses métadonnées."""
+        safe_sub_path = (sub_path or "").lstrip("/\\")
+        target_dir = self.upload_dir / safe_sub_path
 
+        resolved_target = target_dir.resolve()
+        if not str(resolved_target).startswith(str(self.upload_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid target path (must be inside uploads/)")
 
-# --- Sauvegarde de fichier ---
-async def save_file(file: UploadFile, sub_path: str | None = None) -> FileModel:
-    """
-    Sauvegarde un fichier.
+        resolved_target.mkdir(parents=True, exist_ok=True)
 
-    :param file: Fichier envoyé par le client
-    :param sub_path: Chemin relatif (ex: 'docs/2025/') — doit être enfant de UPLOAD_DIR
-    :return: FileModel contenant les métadonnées
-    """
-    # Calcul du dossier cible
-    safe_sub_path = (sub_path or "").lstrip("/\\")
-    target_dir = UPLOAD_DIR / safe_sub_path
+        now = datetime.now()
+        saved_filename = f"{uuid.uuid4()}_{file.filename}"
+        file_path = resolved_target / saved_filename
 
-    print('sub_path:', sub_path)
-    print('target_dir:', target_dir)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    # Sécurité : on résout le chemin et on vérifie qu'il est bien enfant de UPLOAD_DIR
-    resolved_target = target_dir.resolve()
-    if not str(resolved_target).startswith(str(UPLOAD_DIR.resolve())):
-        raise HTTPException(status_code=400, detail="Invalid target path (must be inside uploads/)")
-
-    # Création du dossier si nécessaire
-    resolved_target.mkdir(parents=True, exist_ok=True)
-
-    # Nom final du fichier
-    now = datetime.now()
-    saved_filename = f"{uuid.uuid4()}_{file.filename}"
-    file_path = resolved_target / saved_filename
-
-    # Sauvegarde sur disque
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Construction du modèle
-    return FileModel(
-        id=generate_id_from_path(file_path),
-        name=file.filename,
-        saved_as=saved_filename,
-        created_at=now,
-        modified_at=now,
-        size_bytes=file_path.stat().st_size,
-        mimeType=detect_mimetype(file_path, file.content_type)
-    )
-
-
-# --- Lecture récursive du dossier ---
-async def list_directory(path: str = ".") -> FolderModel:
-    """
-    Construit récursivement la structure des dossiers et fichiers avec leur ID.
-    """
-    target_dir = (UPLOAD_DIR / path).resolve()
-
-    def build_folder(directory: Path) -> FolderModel:
-        folder = FolderModel(
-            id=generate_id_from_path(directory),
-            name=directory.name,
-            children=[],
-            created_at=datetime.fromtimestamp(directory.stat().st_ctime),
-            modified_at=datetime.fromtimestamp(directory.stat().st_mtime))
-
-        entries = sorted(
-            os.scandir(directory),
-            key=lambda e: (e.is_dir(), e.name.lower())  # trie par type puis par nom
+        return FileModel(
+            id=self._generate_id_from_path(file_path),
+            name=file.filename,
+            saved_as=saved_filename,
+            created_at=now,
+            modified_at=now,
+            size_bytes=file_path.stat().st_size,
+            mimeType=detect_mimetype(file_path, file.content_type),
         )
 
-        for entry in entries:
-            entry_path = Path(entry.path)
+    async def list_directory(self, path: str = ".") -> FolderModel:
+        """Retourne récursivement la structure d’un dossier sous forme d’arborescence."""
+        target_dir = (self.upload_dir / path).resolve()
 
-            if entry.is_dir():
-                folder.children.append(build_folder(entry_path))
-            else:
-                mime_type, _ = mimetypes.guess_type(str(entry_path))
-                splitName = entry.name.split("_", 1)
-                trueName = splitName[1] if len(splitName) > 1 else entry.name
-                folder.children.append(
-                    FileModel(
-                        id=generate_id_from_path(entry_path),
-                        name=trueName,
-                        saved_as=entry.name,
-                        created_at=datetime.fromtimestamp(entry_path.stat().st_ctime),
-                        modified_at=datetime.fromtimestamp(entry_path.stat().st_mtime),
-                        size_bytes=entry_path.stat().st_size,
-                        mimeType=detect_mimetype(entry_path)
+        def build_folder(directory: Path) -> FolderModel:
+            folder = FolderModel(
+                id=self._generate_id_from_path(directory),
+                name=directory.name,
+                children=[],
+                created_at=datetime.fromtimestamp(directory.stat().st_ctime),
+                modified_at=datetime.fromtimestamp(directory.stat().st_mtime),
+            )
+
+            entries = sorted(
+                os.scandir(directory),
+                key=lambda e: (e.is_dir(), e.name.lower())
+            )
+
+            for entry in entries:
+                entry_path = Path(entry.path)
+                if entry.is_dir():
+                    folder.children.append(build_folder(entry_path))
+                else:
+                    true_name = extract_true_name(entry.name)
+                    folder.children.append(
+                        FileModel(
+                            id=self._generate_id_from_path(entry_path),
+                            name=true_name,
+                            saved_as=entry.name,
+                            created_at=datetime.fromtimestamp(entry_path.stat().st_ctime),
+                            modified_at=datetime.fromtimestamp(entry_path.stat().st_mtime),
+                            size_bytes=entry_path.stat().st_size,
+                            mimeType=detect_mimetype(entry_path),
+                        )
                     )
-                )
 
-        return folder
+            return folder
 
-    return build_folder(target_dir)
+        return build_folder(target_dir)
 
+    async def delete_path(self, item_id: str) -> bool:
+        """Supprime un fichier ou un dossier à partir de son ID."""
+        path = await self._find_path_by_id(item_id)
+        if not path:
+            return False
 
+        try:
+            if path.is_file():
+                os.remove(path)
+            else:
+                shutil.rmtree(path)
+            return True
+        except Exception as e:
+            print(f"Erreur suppression {path}: {e}")
+            return False
 
-# --- Suppression fichier ou dossier ---
-async def delete_path(item_id: str) -> bool:
-    """
-    Supprime un fichier ou un dossier en se basant sur son ID (hash path).
-    """
-    path = await find_path_by_id(item_id)
-    if not path:
-        return False
+    async def rename_path(self, item_id: str, new_name: str) -> bool:
+        """Renomme un fichier ou un dossier à partir de son ID."""
+        path = await self._find_path_by_id(item_id)
+        if not path:
+            return False
 
-    try:
-        if path.is_file():
-            os.remove(path)
-        else:
-            shutil.rmtree(path)
-        return True
-    except Exception as e:
-        print(f"Erreur suppression {path}: {e}")
-        return False
+        new_path = path.parent / new_name
+        try:
+            os.rename(path, new_path)
+            return True
+        except Exception as e:
+            print(f"Erreur renommage {path} -> {new_name}: {e}")
+            return False
 
+    async def create_directory(self, name: str, sub_path: str) -> bool:
+        """Crée un dossier à l’emplacement spécifié."""
+        safe_sub_path = (sub_path or "").lstrip("/\\")
+        target_dir = self.upload_dir / safe_sub_path / name
 
-# --- Renommage fichier ou dossier ---
-async def rename_path(item_id: str, new_name: str) -> bool:
-    """
-    Renomme un fichier ou un dossier grâce à son ID (hash path).
-    """
-    path = await find_path_by_id(item_id)
-    if not path:
-        return False
+        print(f"Creating directory at: {target_dir}")
 
-    new_path = path.parent / new_name
-    try:
-        os.rename(path, new_path)
-        return True
-    except Exception as e:
-        print(f"Erreur renommage {path} -> {new_name}: {e}")
-        return False
-    
-async def create_directory(name: str, subPath: str) -> bool:
-    """
-    Crée un nouveau dossier à l'emplacement spécifié.
+        resolved_target = target_dir.resolve()
+        if not str(resolved_target).startswith(str(self.upload_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid target path")
 
-    :param name: Nom du nouveau dossier
-    :param subPath: Chemin relatif où créer le dossier (ex: 'docs/2025/')
-    :return: Booléen indiquant le succès de l'opération
-    """
-    # Calcul du dossier cible
-    safe_sub_path = (subPath or "").lstrip("/\\")
-    target_dir = UPLOAD_DIR / safe_sub_path / name
-
-    resolved_target = target_dir.resolve()
-    if not str(resolved_target).startswith(str(UPLOAD_DIR.resolve())):
-        raise HTTPException(status_code=400, detail="Invalid target path")
-
-    try:
-        resolved_target.mkdir(parents=True, exist_ok=False)
-        return True
-    except FileExistsError:
-        print(f"Le dossier {resolved_target} existe déjà.")
-        return False
-    except Exception as e:
-        print(f"Erreur création dossier {resolved_target}: {e}")
-        return False
+        try:
+            resolved_target.mkdir(parents=True, exist_ok=False)
+            return True
+        except FileExistsError:
+            print(f"Le dossier {resolved_target} existe déjà.")
+            return False
+        except Exception as e:
+            print(f"Erreur création dossier {resolved_target}: {e}")
+            return False
