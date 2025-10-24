@@ -1,20 +1,59 @@
-from fastapi import APIRouter, HTTPException
-from app.schemas.user_schema import UserCreate, UserResponse
+from typing import List
+from fastapi import APIRouter, Body
+from app.schemas.response_schema import ApiResponse
+from app.schemas.user_schema import UserIn, UserOut, UserUpdate
 from app.core.service_provider import ServiceProvider
+from fastapi import Depends
+from app.database import get_async_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
-UserService = ServiceProvider.get_user_service()
+user_service = ServiceProvider.get_user_service()
 
-@router.post("/users", response_model=UserResponse)
-async def register_user(user: UserCreate):
-    db_user = await UserService.create_user(user)
-    if db_user is None:
-        raise HTTPException(status_code=400, detail="User already exists")
-    return db_user
+@router.post("/create", response_model=ApiResponse[UserOut])
+async def register_user(user: UserIn = Body(...), db: AsyncSession = Depends(get_async_db)):
+    """
+    Crée un nouvel utilisateur.
+    """
+    new_user = await user_service.create_user(user, db)
+    return ApiResponse[UserOut](data=new_user)
 
-@router.get("/users/{user_id}", response_model=UserResponse)
-async def read_user(user_id: int):
-    db_user = await UserService.get_user_by_id(user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+@router.patch("/update/{user_id}", response_model=ApiResponse[UserOut])
+async def update_user(user_id: int, fields: UserUpdate = Body(...), db: AsyncSession = Depends(get_async_db)):
+    """
+    Met à jour partiellement un utilisateur existant.
+    """
+    updated_user = await user_service.update_user_by_id(user_id, fields, db)
+    return ApiResponse[UserOut](data=updated_user)
+
+@router.delete("/delete/{user_id}", response_model=ApiResponse[str])
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
+    """
+    Supprime un utilisateur par ID.
+    """
+    result = await user_service.delete_user_by_id(user_id, db)
+    return ApiResponse[str](data=result)
+
+@router.get("/get-user-by-id/{user_id}", response_model=ApiResponse[UserOut])
+async def get_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
+    """
+    Récupère un utilisateur par ID.
+    """
+    user = await user_service.get_user_by_id(user_id, db)
+    return ApiResponse[UserOut](data=user)
+
+@router.get("/get-user-by-email", response_model=ApiResponse[UserOut])
+async def get_user(email: str, db: AsyncSession = Depends(get_async_db)):
+    """
+    Récupère un utilisateur par email.
+    """
+    user = await user_service.get_user_by_email(email, db)
+    return ApiResponse[UserOut](data=user)
+
+@router.get("/all", response_model=ApiResponse[List[UserOut]])
+async def get_all_users(db: AsyncSession = Depends(get_async_db)):
+    """
+    Récupère la liste complète des utilisateurs.
+    """
+    users = await user_service.get_all_users(db)
+    return ApiResponse[List[UserOut]](data=users)

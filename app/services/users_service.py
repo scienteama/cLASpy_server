@@ -1,30 +1,86 @@
-
 from app.dao.user_dao import UserDAO
 from app.models.user import User
-from app.schemas.user_schema import UserCreate, UserResponse
+from app.schemas.user_schema import UserIn, UserOut, UserUpdate
 from app.utils.auth_utils import hash_password
+from typing import List, Type
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 class UserService:
     """
-    Service métier pour la gestion des utilisateurs.
+    Service de gestion des utilisateurs.
     """
-    def __init__(self, user_dao: UserDAO):
-        self.user_dao = user_dao
 
-    def create_user(self, user_create: UserCreate) -> UserResponse:
-        hashed_password = hash_password(user_create.password)
+class UserService:
+    def __init__(self, user_dao_cls: Type[UserDAO]):
+        self.user_dao_cls = user_dao_cls
+
+    # --- CREATE ---
+    async def create_user(self, user_data: UserIn, db: AsyncSession) -> UserOut:
+        """
+        Crée un nouvel utilisateur en hachant son mot de passe.
+        """
+        user_dao = self.user_dao_cls(db)
+        hashed_password = hash_password(user_data.password)
         user = User(
-            username=user_create.username,
-            email=user_create.email,
-            password=hashed_password
+            firstname=user_data.firstname,
+            lastname=user_data.lastname,
+            email=user_data.email,
+            password=hashed_password,
+            role_id=user_data.role_id,
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
-        user = self.user_dao.create(user)
-        return UserResponse.from_orm(user)
+        created_user = await user_dao.create(user)
+        return UserOut.model_validate(created_user)
 
-    def get_user_by_id(self, user_id: int) -> UserResponse | None:
-        user = self.user_dao.get_by_id(user_id)
-        return UserResponse.from_orm(user) if user else None
+    # --- READ ---
+    async def get_user_by_id(self, user_id: int, db: AsyncSession) -> UserOut:
+        """
+        Récupère un utilisateur par son ID.
+        """
+        user_dao = self.user_dao_cls(db)
+        user = await user_dao.get_by_id(user_id)
+        return UserOut.model_validate(user)
 
-    def get_user_by_email(self, email: str) -> UserResponse | None:
-        user = self.user_dao.get_by_email(email)
-        return UserResponse.from_orm(user) if user else None
+    async def get_all_users(self, db: AsyncSession) -> List[UserOut]:
+        """
+        Retourne la liste complète des utilisateurs.
+        """
+        user_dao = self.user_dao_cls(db)
+        users: List[User] = await user_dao.get_all_users()
+        return [UserOut.model_validate(u) for u in users]
+
+    async def get_user_by_email(self, email: str, db: AsyncSession) -> UserOut:
+        """
+        Récupère un utilisateur par son email.
+        """
+        user_dao = self.user_dao_cls(db)
+        user = await user_dao.get_by_email(email)
+        return UserOut.model_validate(user)
+
+    # --- UPDATE ---
+    async def update_user_by_id(self, user_id: int, fields: UserUpdate, db: AsyncSession) -> UserOut:
+        """
+        Met à jour un utilisateur partiellement.
+        """
+        user_dao = self.user_dao_cls(db)
+        await user_dao.get_by_id(user_id)
+        update_data = fields.model_dump(exclude_unset=True)
+
+        if "password" in update_data and update_data["password"]:
+            update_data["password"] = hash_password(update_data["password"])
+        update_data["updated_at"] = datetime.now()
+
+        updated_user = await user_dao.update(user_id, update_data)
+        return UserOut.model_validate(updated_user)
+
+
+    # --- DELETE ---
+    async def delete_user_by_id(self, user_id: int, db: AsyncSession) -> str:
+        """
+        Supprime un utilisateur par ID.
+        """
+        user_dao = self.user_dao_cls(db)
+        result = await user_dao.delete(user_id)
+        return result

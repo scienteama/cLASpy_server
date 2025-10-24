@@ -20,6 +20,7 @@ class ClaspyMLService:
 
     def get_core_version(self) -> str:
         if self.classes != None:
+            
             return f"core_version : {self.classes.cLASpy_Core_version}"
         else:
             return "Plugin cLASpy_ML non chargé."

@@ -1,25 +1,24 @@
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from databases import Database
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import MetaData
 from app.core.config import settings
-from typing import Generator
+from typing import AsyncGenerator
 
-database = Database(settings.DATABASE_URL)
-metadata = MetaData()
+# URL de connexion async
+DATABASE_URL = settings.DATABASE_URL  
 
-engine = create_engine(
-    settings.DATABASE_URL.replace("asyncpg", "psycopg2"),
-    echo=True
+# Création de l'engine async
+engine = create_async_engine(DATABASE_URL, echo=False)
+
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
 )
 
+metadata = MetaData()
 Base = declarative_base()
 
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        db.close()
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        yield session

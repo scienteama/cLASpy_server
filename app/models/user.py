@@ -1,6 +1,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from app.database import Base
+from .role import Role
 
 class User(Base):
     __tablename__ = 'users'
@@ -15,4 +16,4 @@ class User(Base):
     lastLogin = Column(DateTime)
     role_id = Column(Integer, ForeignKey("roles.id"))
 
-    role = relationship("Role", back_populates="users")
+    role = relationship(Role, back_populates="users")
