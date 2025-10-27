@@ -44,7 +44,7 @@ class ModulesService:
         # Invalidation du cache après installation
         ModulesService.invalidate_cache()
 
-        return f"Plugin '{plugin_name}' chargé"
+        return f"Plugin '{plugin_name}' chargé avec succès"
 
     @staticmethod
     def unload_plugin(plugin_name: str) -> Dict[str, str]:
@@ -57,7 +57,7 @@ class ModulesService:
         # Invalidation du cache après suppression
         ModulesService.invalidate_cache()
 
-        return {"message": f"Plugin '{plugin_name}' déchargé"}
+        return f"Plugin '{plugin_name}' déchargé aves succès"
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -93,5 +93,5 @@ class ModulesService:
 
     @staticmethod
     def invalidate_cache():
-        """Purge le cache des modules (utile après install/uninstall)."""
+        """Purge le cache des modules"""
         ModulesService.list_claspy_modules.cache_clear()
