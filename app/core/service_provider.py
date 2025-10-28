@@ -1,3 +1,4 @@
+from app.services.auth_service import AuthService
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.files_service import FileService
 from app.services.modules_service import ModulesService
@@ -11,7 +12,8 @@ class ServiceProvider:
     _file_service: FileService | None = None
     _user_service: UserService | None = None
     _modules_service: ModulesService | None = None
-    _claspy_ML_service: ClaspyMLService = None
+    _claspy_ML_service: ClaspyMLService | None = None
+    _auth_service: AuthService | None = None
 
     @classmethod
     def get_file_service(cls) -> FileService:
@@ -24,6 +26,13 @@ class ServiceProvider:
         if cls._user_service is None:
             cls._user_service = UserService(UserDAO)
         return cls._user_service
+    
+    @classmethod
+    def get_auth_service(cls) -> AuthService:
+        if cls._auth_service is None:
+            cls._auth_service = AuthService(cls.get_user_service())
+        return cls._auth_service
+    
     
     @classmethod
     def get_modules_service(cls) -> ModulesService:

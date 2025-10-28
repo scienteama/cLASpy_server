@@ -1,8 +1,9 @@
+from fastapi import Depends
 from app.dao.user_dao import UserDAO
 from app.models.user import User
-from app.schemas.user_schema import UserIn, UserOut, UserUpdate
+from app.schemas.user_schema import User, UserIn, UserOut, UserUpdate
 from app.utils.auth_utils import hash_password
-from typing import List, Type
+from typing import Annotated, List, Type
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,8 +11,6 @@ class UserService:
     """
     Service de gestion des utilisateurs.
     """
-
-class UserService:
     def __init__(self, user_dao_cls: Type[UserDAO]):
         self.user_dao_cls = user_dao_cls
 
@@ -58,7 +57,15 @@ class UserService:
         user_dao = self.user_dao_cls(db)
         user = await user_dao.get_by_email(email)
         return UserOut.model_validate(user)
-
+    
+    async def get_full_user_by_email(self, email: str, db: AsyncSession) -> User:
+        """
+        Récupère un utilisateur complet via son email.
+        """
+        user_dao = self.user_dao_cls(db)
+        user = await user_dao.get_by_email(email)
+        return User.model_validate(user)
+    
     # --- UPDATE ---
     async def update_user_by_id(self, user_id: int, fields: UserUpdate, db: AsyncSession) -> UserOut:
         """

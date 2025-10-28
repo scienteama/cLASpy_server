@@ -18,7 +18,7 @@ class RouterItem:
         self.tags = tags
         self.responses = responses or {}
 
-        for code in [HTTPStatus.BAD_REQUEST, HTTPStatus.NOT_FOUND, HTTPStatus.INTERNAL_SERVER_ERROR]:
+        for code in [HTTPStatus.BAD_REQUEST, HTTPStatus.NOT_FOUND, HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.UNPROCESSABLE_ENTITY]:
             if code.value not in self.responses:
                 example = ErrorResponse(
                     isOk=False,
