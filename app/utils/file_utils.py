@@ -107,4 +107,3 @@ def find_duplicate_file(file_bytes: bytes, folder_path: PathLib) -> PathLib | No
                 return existing_file
 
     return None
-

@@ -5,14 +5,13 @@ import pkg_resources
 from typing import Dict, List
 from functools import lru_cache
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.schemas.module_schema import ClaspyModule
-
-config = Settings()
 
 class ModulesService:
     """Service pour la gestion des modules cLASpy."""
 
+    config =  get_settings()
     PLUGINS_FILE = config.PROJECT_ROOT / "plugins.json"
 
     @staticmethod
@@ -47,7 +46,7 @@ class ModulesService:
         return f"Plugin '{plugin_name}' chargé avec succès"
 
     @staticmethod
-    def unload_plugin(plugin_name: str) -> Dict[str, str]:
+    def unload_plugin(plugin_name: str) -> str:
         """Désinstalle un plugin cLASpy à partir de son nom."""
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", plugin_name])

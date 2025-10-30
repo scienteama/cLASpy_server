@@ -1,14 +1,11 @@
-from typing import Annotated, List
-from fastapi import APIRouter, Body
-from fastapi.security import OAuth2PasswordBearer
-from app.core.oauth import OAuth2EmailRequestForm
+from typing import List
+from fastapi import APIRouter, Body, Request
 from app.schemas.response_schema import ApiResponse
 from app.schemas.user_schema import UserIn, UserOut, UserUpdate
 from app.core.service_provider import ServiceProvider
 from fastapi import Depends
 from app.database import get_async_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.auth_service import AuthService
 
 router = APIRouter()
 user_service = ServiceProvider.get_user_service()
@@ -54,14 +51,11 @@ async def get_user(email: str, db: AsyncSession = Depends(get_async_db)):
     return ApiResponse[UserOut](data=user)
 
 @router.get("/me", response_model=ApiResponse[UserOut])
-async def get_me(token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="token"))],
-                 auth_service: AuthService = Depends(ServiceProvider.get_auth_service),
-                 db: AsyncSession = Depends(get_async_db)) -> ApiResponse[UserOut]:
+async def get_me(req: Request, db: AsyncSession = Depends(get_async_db)) -> ApiResponse[UserOut]:
     """
     Récupère l'utilisateur courant.
     """
-    token_data = auth_service.verify_token(token)
-    user = await user_service.get_user_by_id(token_data.id, db)
+    user = await user_service.get_user_by_id(req.state.user.id, db)
     return ApiResponse[UserOut](data=user)
 
 @router.get("/all", response_model=ApiResponse[List[UserOut]])

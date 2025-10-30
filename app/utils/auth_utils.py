@@ -7,12 +7,22 @@ from app.schemas.auth_schema import CookieConfig, Token
 
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""
+    if not password:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=f"Paramètres invalides"
+        )
     password_hash = PasswordHash.recommended()
     salt = os.urandom(16)
     return password_hash.hash(password, salt=salt)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a hashed password against a plain password."""
+    if not plain_password: 
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=f"Paramètres invalides"
+        )
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
 

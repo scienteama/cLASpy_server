@@ -50,6 +50,10 @@ uploads/
 data/
 storage/
 
+# Certificats
+certificats/
+*.pem
+
 # C extensions
 *.so
 *.pyd

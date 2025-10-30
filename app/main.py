@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from app.api.middlewares.auth_middleware import AuthMiddleware
-from app.api.middlewares.cors_middleware import CORSMiddleware
 from app.api.middlewares.utils_middleware import UtilsMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import get_settings
 from app.core.registry import RouterRegistry
 from app.database import engine
 from app.api.routers.users_router import router as users_router
@@ -21,11 +22,19 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
+config = get_settings()
+
 # App FastAPI
-app = FastAPI(lifespan=lifespan, title="cLASpy_T Web API")
+app = FastAPI(lifespan=lifespan, title=config.app_name)
 
 # Middlewares
-app.add_middleware(CORSMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://localhost:8081", "https://127.0.0.1:8081"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(UtilsMiddleware)
 
@@ -42,7 +51,21 @@ registry.include_all(app)
 app.add_exception_handler(HTTPException, ErrorResponse.http_exception_handler)
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
 
-# Exécution directe pour dev
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="localhost", port=8000, reload=True)
+    from app.core.config import get_settings
+
+    config = get_settings()
+
+    use_https = config.ENV != "production"
+
+    uvicorn.run(
+        "app.main:app",
+        host=config.HOST,
+        port=config.PORT,
+        reload=(config.ENV == "development"),
+        ssl_keyfile=(config.PROJECT_ROOT / "certificats/claspy_key.pem" if use_https else None),
+        ssl_certfile=(config.PROJECT_ROOT / "certificats/claspy_cert.pem" if use_https else None),
+    )
+
+ 

@@ -77,6 +77,12 @@ class UserDAO:
         return user
 
     async def get_by_email(self, email: str) -> User:
+        if not email:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Adresse email invalide"
+            )
+
         result = await self.db.execute(select(User).where(User.email == email))
         user: User | None = result.scalar_one_or_none()
         if not user:
