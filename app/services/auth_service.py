@@ -3,7 +3,7 @@ from fastapi import Response
 import jwt
 from app.core.config import get_settings
 from app.schemas.auth_schema import Token, TokenData
-from app.schemas.user_schema import UserOut
+from app.schemas.user_schema import UserOut, UserUpdate
 from app.services.users_service import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.auth_utils import raise_auth_exception, verify_password
@@ -20,16 +20,15 @@ class AuthService:
     async def authenticate(self, email: str, password: str, db: AsyncSession) -> UserOut:
         user = await self.user_service.get_full_user_by_email(email, db)
         if verify_password(password, user.password):
+            await self.user_service.update_user_by_id(user.id, UserUpdate(lastLogin=datetime.now()), db)
             return UserOut.model_validate(user) 
-        else :None
+        else :raise_auth_exception("Email ou mot de passe incorrect")
 
     async def create_access_token(self, user: UserOut) -> Token:
         to_encode = {"user": TokenData(id=user.id, email=user.email).model_dump()}
         try:
             expire_minutes = max(int(self.config.ACCESS_TOKEN_EXPIRE_MINUTES), 1)
-            print(expire_minutes)
         except (TypeError, ValueError):
-            print ('value error')
             expire_minutes = 30
         expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
         to_encode["exp"] = expire

@@ -1,8 +1,9 @@
-from fastapi import Depends
+from http import HTTPStatus
+from fastapi import Depends, HTTPException
 from app.dao.user_dao import UserDAO
 from app.models.user import User
-from app.schemas.user_schema import User, UserIn, UserOut, UserUpdate
-from app.utils.auth_utils import hash_password
+from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
+from app.utils.auth_utils import hash_password, raise_auth_exception
 from typing import Annotated, List, Type
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,17 +55,30 @@ class UserService:
         """
         Récupère un utilisateur par son email.
         """
+        if not email:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Adresse email invalide."
+            )
+        
         user_dao = self.user_dao_cls(db)
         user = await user_dao.get_by_email(email)
+        if not user:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail=f"Adresse email inconnue."
+            )
         return UserOut.model_validate(user)
     
-    async def get_full_user_by_email(self, email: str, db: AsyncSession) -> User:
+    async def get_full_user_by_email(self, email: str, db: AsyncSession) -> UserBase:
         """
         Récupère un utilisateur complet via son email.
         """
         user_dao = self.user_dao_cls(db)
         user = await user_dao.get_by_email(email)
-        return User.model_validate(user)
+        if not user:
+            raise_auth_exception("Email ou mot de passe incorrect")
+        return UserBase.model_validate(user)
     
     # --- UPDATE ---
     async def update_user_by_id(self, user_id: int, fields: UserUpdate, db: AsyncSession) -> UserOut:

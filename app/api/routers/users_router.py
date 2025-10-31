@@ -11,7 +11,7 @@ router = APIRouter()
 user_service = ServiceProvider.get_user_service()
 
 @router.post("/add", response_model=ApiResponse[UserOut])
-async def register_user(user: UserIn = Body(...), db: AsyncSession = Depends(get_async_db)):
+async def register_user(req: Request, user: UserIn = Body(...), db: AsyncSession = Depends(get_async_db)):
     """
     Crée un nouvel utilisateur.
     """

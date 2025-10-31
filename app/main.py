@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from app.api.middlewares.auth_middleware import AuthMiddleware
 from app.api.middlewares.utils_middleware import UtilsMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +50,7 @@ registry.include_all(app)
 
 # Exception Handlers
 app.add_exception_handler(HTTPException, ErrorResponse.http_exception_handler)
+app.add_exception_handler(RequestValidationError, ErrorResponse.validation_exception_handler)
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
 
 if __name__ == "__main__":
