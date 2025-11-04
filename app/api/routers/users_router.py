@@ -1,17 +1,20 @@
-from typing import List
+from typing import Annotated, List
 from fastapi import APIRouter, Body, Request
+from app.core.service_provider import ServiceProvider
 from app.schemas.response_schema import ApiResponse
 from app.schemas.user_schema import UserIn, UserOut, UserUpdate
-from app.core.service_provider import ServiceProvider
 from fastapi import Depends
 from app.database import get_async_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.interfaces.user_interface import IUserService
 
 router = APIRouter()
-user_service = ServiceProvider.get_user_service()
 
 @router.post("/add", response_model=ApiResponse[UserOut])
-async def register_user(req: Request, user: UserIn = Body(...), db: AsyncSession = Depends(get_async_db)):
+async def register_user(req: Request,
+                        user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                        user: UserIn = Body(...),
+                        db: AsyncSession = Depends(get_async_db)):
     """
     Crée un nouvel utilisateur.
     """
@@ -19,7 +22,10 @@ async def register_user(req: Request, user: UserIn = Body(...), db: AsyncSession
     return ApiResponse[UserOut](data=new_user)
 
 @router.patch("/update/{user_id}", response_model=ApiResponse[UserOut])
-async def update_user(user_id: int, fields: UserUpdate = Body(...), db: AsyncSession = Depends(get_async_db)):
+async def update_user(user_id: int,
+                      user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                      fields: UserUpdate = Body(...),
+                      db: AsyncSession = Depends(get_async_db)):
     """
     Met à jour partiellement un utilisateur existant.
     """
@@ -27,7 +33,9 @@ async def update_user(user_id: int, fields: UserUpdate = Body(...), db: AsyncSes
     return ApiResponse[UserOut](data=updated_user)
 
 @router.delete("/delete/{user_id}", response_model=ApiResponse[str])
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
+async def delete_user(user_id: int,
+                      user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                      db: AsyncSession = Depends(get_async_db)):
     """
     Supprime un utilisateur par ID.
     """
@@ -35,7 +43,9 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
     return ApiResponse[str](data=result)
 
 @router.get("/get-by-id/{user_id}", response_model=ApiResponse[UserOut])
-async def get_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
+async def get_user(user_id: int,
+                   user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                   db: AsyncSession = Depends(get_async_db)):
     """
     Récupère un utilisateur par ID.
     """
@@ -43,7 +53,9 @@ async def get_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
     return ApiResponse[UserOut](data=user)
 
 @router.get("/get-by-email", response_model=ApiResponse[UserOut])
-async def get_user(email: str, db: AsyncSession = Depends(get_async_db)):
+async def get_user(email: str,
+                   user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                   db: AsyncSession = Depends(get_async_db)):
     """
     Récupère un utilisateur par email.
     """
@@ -51,7 +63,9 @@ async def get_user(email: str, db: AsyncSession = Depends(get_async_db)):
     return ApiResponse[UserOut](data=user)
 
 @router.get("/me", response_model=ApiResponse[UserOut])
-async def get_me(req: Request, db: AsyncSession = Depends(get_async_db)) -> ApiResponse[UserOut]:
+async def get_me(req: Request,
+                 user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                 db: AsyncSession = Depends(get_async_db)) -> ApiResponse[UserOut]:
     """
     Récupère l'utilisateur courant.
     """
@@ -59,7 +73,8 @@ async def get_me(req: Request, db: AsyncSession = Depends(get_async_db)) -> ApiR
     return ApiResponse[UserOut](data=user)
 
 @router.get("/all", response_model=ApiResponse[List[UserOut]])
-async def get_all_users(db: AsyncSession = Depends(get_async_db)):
+async def get_all_users(user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
+                        db: AsyncSession = Depends(get_async_db)):
     """
     Récupère la liste complète des utilisateurs.
     """

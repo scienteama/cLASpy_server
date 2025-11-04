@@ -4,33 +4,51 @@ import shutil
 from datetime import datetime
 import uuid
 from fastapi import HTTPException, UploadFile
+from app.core.config import Settings, get_settings
+from app.models.user import User
 from app.schemas.file_schema import FileModel, FolderModel
+from app.schemas.user_schema import UserOut
+from app.services.interfaces.files_interface import IFileService
+from app.services.interfaces.user_interface import IUserService
 from app.utils import file_utils
 from http import HTTPStatus
+from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class FileService:
+class FileService(IFileService):
     """
     Service métier pour la gestion des fichiers et dossiers.
     """
-    def __init__(self, upload_dir: Path | str = "uploads"):
-        self.upload_dir = Path(upload_dir)
-        self.upload_dir.mkdir(exist_ok=True)
+    def __init__(self, user_service: IUserService | None = None):
+        self.user_service = user_service
+        self.config: Settings = get_settings()
+        self.upload_dir = Path(self.config.UPLOAD_DIR)
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
 
-    async def save_file(self, file: UploadFile, sub_path: str | None = None) -> FileModel:
-        """Sauvegarde un fichier sur disque et retourne ses métadonnées."""
-        safe_sub_path = (sub_path or "").lstrip("/\\")
-        target_dir = self.upload_dir / safe_sub_path
 
-        resolved_target = target_dir.resolve()
-        if not str(resolved_target).startswith(str(self.upload_dir.resolve())):
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid target path (must be inside uploads/)")
+    async def _get_user_dir(self, user_id: int, db: AsyncSession, sub_path: str | None = None) -> Path:
+        user = await self.user_service.get_user_by_id(user_id, db)
+        folder_name = f"{user.id}_{user.firstname[0].lower()}{user.lastname.lower()}"
+        user_dir = (self.upload_dir / "users" / folder_name).resolve()
+        user_dir.mkdir(parents=True, exist_ok=True)
 
-        resolved_target.mkdir(parents=True, exist_ok=True)
+        if sub_path:
+            target_dir = (user_dir / sub_path.lstrip("/\\")).resolve()
+        else:
+            target_dir = user_dir
+
+        if not target_dir.is_relative_to(user_dir):
+            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Accès interdit")
+
+        return target_dir
+
+
+    async def save_file(self, file: UploadFile, user_id: int, db: AsyncSession, sub_path: str | None = None) -> FileModel:
+        target_dir = await self._get_user_dir(user_id, db, sub_path)
+        target_dir.mkdir(parents=True, exist_ok=True)
 
         now = datetime.now()
         saved_filename = f"{uuid.uuid4()}_{file.filename}"
-        file_path = resolved_target / saved_filename
+        file_path = target_dir / saved_filename
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -45,9 +63,19 @@ class FileService:
             mimeType=file_utils.detect_mimetype(file_path, file.content_type),
         )
 
-    async def list_directory(self, path: str = ".") -> FolderModel:
-        """Retourne récursivement la structure d'un dossier sous forme d'arborescence."""
-        target_dir = (self.upload_dir / path).resolve()
+    async def create_directory(self, user_id: int, name: str, db: AsyncSession,  sub_path: str | None = None) -> str:
+        target_dir = await self._get_user_dir(user_id, db, sub_path) / name
+        try:
+            target_dir.mkdir(parents=True, exist_ok=False)
+            return f"Le dossier {name} a été créé avec succès"
+        except FileExistsError:
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=f"Le dossier {name} existe déjà.")
+        except Exception as e:
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la création du dossier : {e}")
+
+    async def list_directory(self, user_id: int, db: AsyncSession, path: str = ".") -> FolderModel:
+        
+        target_dir = await self._get_user_dir(user_id, db, path)
 
         def build_folder(directory: Path) -> FolderModel:
             folder = FolderModel(
@@ -57,12 +85,7 @@ class FileService:
                 created_at=datetime.fromtimestamp(directory.stat().st_ctime),
                 modified_at=datetime.fromtimestamp(directory.stat().st_mtime),
             )
-
-            entries = sorted(
-                os.scandir(directory),
-                key=lambda e: (e.is_dir(), e.name.lower())
-            )
-
+            entries = sorted(os.scandir(directory), key=lambda e: (e.is_dir(), e.name.lower()))
             existing_names = set()
             for entry in entries:
                 entry_path = Path(entry.path)
@@ -83,19 +106,14 @@ class FileService:
                             mimeType=file_utils.detect_mimetype(entry_path),
                         )
                     )
-
             return folder
 
         return build_folder(target_dir)
 
     async def delete_path(self, item_id: str) -> str:
-        """Supprime un fichier ou un dossier à partir de son ID."""
         path = await file_utils.find_path_by_id(item_id, self.upload_dir)
         if not path:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}"
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}")
         try:
             if path.is_file():
                 os.remove(path)
@@ -103,71 +121,37 @@ class FileService:
                 shutil.rmtree(path)
             return f"L'objet a été supprimé avec succès"
         except PermissionError:
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail=f"Permission refusée pour supprimer l'objet {item_id}"
-            )
+            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour supprimer l'objet {item_id}")
         except FileNotFoundError:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"L'objet {item_id} n'existe plus"
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"L'objet {item_id} n'existe plus")
         except Exception as e:
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Une erreur est survenue lors de la suppression : {e}"
-            )
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la suppression : {e}")
+        
+    async def delete_user_dir(self, user: UserOut) -> str:
+        folder = f"{user.id}_{user.firstname[0].lower()}{user.lastname.lower()}"
+        user_dir = self.upload_dir / "users" / folder
+
+        if not user_dir.exists():
+             return f"Dossier utilisateur {user.id} introuvable"
+        try:
+            shutil.rmtree(user_dir)
+            return f"Dossier de l'utilisateur supprimé avec succès"
+        except PermissionError:
+            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour supprimer le dossier de l'utilisateur {user.id}")
+        except Exception as e:
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la suppression du dossier : {e}")
 
     async def rename_path(self, item_id: str, new_name: str) -> str:
-        """Renomme un fichier ou un dossier à partir de son ID."""
         path = await file_utils.find_path_by_id(item_id, self.upload_dir)
         if not path:
-            # Si le fichier/dossier n'existe pas → HTTP 404
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}"
-            )
-
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}")
         new_path = path.parent / new_name
-
         try:
             os.rename(path, new_path)
             return f"L'objet a été renommé avec succès"
         except FileExistsError:
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail=f"Un fichier ou dossier portant le nom {new_name} existe déjà"
-            )
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=f"Un fichier ou dossier portant le nom {new_name} existe déjà")
         except PermissionError:
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail=f"Permission refusée pour renommer l'objet {item_id}"
-            )
+            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour renommer l'objet {item_id}")
         except Exception as e:
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Une erreur est survenue lors du renommage : {e}"
-            )
-
-    async def create_directory(self, name: str, sub_path: str) -> str:
-        """Crée un dossier à l'emplacement spécifié."""
-        safe_sub_path = (sub_path or "").lstrip("/\\")
-        target_dir = self.upload_dir / safe_sub_path / name
-
-        resolved_target = target_dir.resolve()
-        if not str(resolved_target).startswith(str(self.upload_dir.resolve())):
-            raise HTTPException(HTTPStatus.BAD_REQUEST, detail="Invalid target path")
-
-        try:
-            resolved_target.mkdir(parents=True, exist_ok=False)
-            return f"Le dossier {name} a été créé avec succès"
-        except FileExistsError:
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail=f"Le dossier {name} existe déjà."
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Une erreur est survenue lors de la création du dossier {name}: {e}"
-            )
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors du renommage : {e}")

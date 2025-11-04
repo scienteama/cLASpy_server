@@ -6,6 +6,7 @@ from app.api.middlewares.utils_middleware import UtilsMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.registry import RouterRegistry
+from app.core.service_provider import ServiceProvider
 from app.database import engine
 from app.api.routers.users_router import router as users_router
 from app.api.routers.files_router import router as file_router
@@ -36,6 +37,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.add_middleware(AuthMiddleware)
 app.add_middleware(UtilsMiddleware)
 
@@ -52,6 +54,8 @@ registry.include_all(app)
 app.add_exception_handler(HTTPException, ErrorResponse.http_exception_handler)
 app.add_exception_handler(RequestValidationError, ErrorResponse.validation_exception_handler)
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
+
+ServiceProvider.init_services()
 
 if __name__ == "__main__":
     import uvicorn

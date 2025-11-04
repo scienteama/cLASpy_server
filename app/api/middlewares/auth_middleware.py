@@ -1,7 +1,9 @@
-from fastapi import HTTPException, Request
+from typing import Annotated
+from fastapi import Depends, HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.service_provider import ServiceProvider
 from app.schemas.error_schema import ErrorResponse
+from app.services.interfaces.auth_interface import IAuthService
 from app.utils.auth_utils import raise_auth_exception
 
 PUBLIC_ROUTES = {
@@ -11,7 +13,14 @@ PUBLIC_ROUTES = {
 }
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.auth_service: IAuthService = ServiceProvider.get_auth_service()
+      
+    async def dispatch(self,
+                       request: Request,
+                       call_next):
         try:
             if request.method == "OPTIONS":
                 return await call_next(request)
@@ -23,8 +32,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if not token:
                 raise_auth_exception("Token manquant")
 
-            auth_service = ServiceProvider.get_auth_service()
-            user_data = auth_service.verify_token(token)
+            user_data = self.auth_service.verify_token(token)
             if not user_data:
                 raise_auth_exception("Token invalide")
 

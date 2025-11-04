@@ -1,47 +1,66 @@
+from app.dao.user_dao import UserDAO
 from app.services.auth_service import AuthService
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.files_service import FileService
+from app.services.interfaces.auth_interface import IAuthService
+from app.services.interfaces.claspyml_interface import IClaspyMLService
+from app.services.interfaces.files_interface import IFileService
+from app.services.interfaces.module_interface import IModuleService
+from app.services.interfaces.user_interface import IUserService
 from app.services.modules_service import ModulesService
 from app.services.users_service import UserService
-from app.dao.user_dao import UserDAO
 
 class ServiceProvider:
     """
-    Conteneur global d'injection des services.
+    Gestion des singletons de service avec typage via interfaces.
     """
-    _file_service: FileService | None = None
-    _user_service: UserService | None = None
-    _modules_service: ModulesService | None = None
-    _claspy_ML_service: ClaspyMLService | None = None
-    _auth_service: AuthService | None = None
+    _auth_service: IAuthService | None = None
+    _user_service: IUserService | None = None
+    _file_service: IFileService | None = None
+    _module_service: IModuleService | None = None
+    _claspyml_service: IClaspyMLService | None = None
 
     @classmethod
-    def get_file_service(cls) -> FileService:
-        if cls._file_service is None:
-            cls._file_service = FileService(upload_dir="uploads")
-        return cls._file_service
+    def init_services(cls):
+        """
+        Initialise les singletons et résout les dépendances circulaires.
+        """
+        cls._user_service = UserService()
+        cls._file_service = FileService()
+        
+        cls._user_service.file_service = cls._file_service
+        cls._file_service.user_service = cls._user_service
+ 
+        cls._auth_service = AuthService(cls._user_service)
+        cls._module_service = ModulesService()
+        cls._claspyml_service = ClaspyMLService()
 
     @classmethod
-    def get_user_service(cls) -> UserService:
+    def get_user_service(cls) -> IUserService:
         if cls._user_service is None:
-            cls._user_service = UserService(UserDAO)
+            cls._user_service = UserService(cls.get_file_service())
         return cls._user_service
-    
+
     @classmethod
-    def get_auth_service(cls) -> AuthService:
+    def get_auth_service(cls) -> IAuthService:
         if cls._auth_service is None:
             cls._auth_service = AuthService(cls.get_user_service())
         return cls._auth_service
-    
+
+    @classmethod
+    def get_file_service(cls) -> IFileService:
+        if cls._file_service is None:
+            cls._file_service = FileService(cls.get_user_service())
+        return cls._file_service
     
     @classmethod
-    def get_modules_service(cls) -> ModulesService:
-        if cls._modules_service is None:
-            cls._modules_service = ModulesService()
-        return cls._modules_service
+    def get_module_service(cls) -> IModuleService:
+        if cls._module_service is None:
+            cls._module_service = ModulesService()
+        return cls._module_service
     
     @classmethod
-    def get_claspy_ML_service(cls) -> ClaspyMLService:
-        if cls._claspy_ML_service is None:
-            cls._claspy_ML_service = ClaspyMLService()
-        return cls._claspy_ML_service
+    def get_claspyml_service(cls) -> IClaspyMLService:
+        if cls._claspyml_service is None:
+            cls._claspyml_service = ClaspyMLService()
+        return cls._claspyml_service

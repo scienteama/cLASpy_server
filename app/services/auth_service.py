@@ -4,7 +4,7 @@ import jwt
 from app.core.config import get_settings
 from app.schemas.auth_schema import Token, TokenData
 from app.schemas.user_schema import UserOut, UserUpdate
-from app.services.users_service import UserService
+from app.services.interfaces.user_interface import IUserService
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.auth_utils import raise_auth_exception, verify_password
 
@@ -13,7 +13,7 @@ class AuthService:
     Service de gestion d'authentification.
     """
 
-    def __init__(self, user_service: UserService):
+    def __init__(self, user_service: IUserService):
         self.user_service = user_service
         self.config = get_settings()
         

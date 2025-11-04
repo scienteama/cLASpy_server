@@ -46,7 +46,7 @@ htmlcov/
 .eggs/
 
 # Common data / uploaded files
-uploads/
+root/
 data/
 storage/
 

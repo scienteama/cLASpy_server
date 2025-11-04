@@ -1,26 +1,29 @@
 from http import HTTPStatus
-from fastapi import Depends, HTTPException
-from app.dao.user_dao import UserDAO
+from fastapi import HTTPException
+from app.core.dao_provider import DAOProvider
+from app.dao.interfaces.i_user_dao import IUserDAO
 from app.models.user import User
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
+from app.services.interfaces.files_interface import IFileService
+from app.services.interfaces.user_interface import IUserService
 from app.utils.auth_utils import hash_password, raise_auth_exception
-from typing import Annotated, List, Type
+from typing import List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
-class UserService:
+class UserService(IUserService):
     """
     Service de gestion des utilisateurs.
     """
-    def __init__(self, user_dao_cls: Type[UserDAO]):
-        self.user_dao_cls = user_dao_cls
+    def __init__(self, file_service: IFileService | None = None):
+        self.userDAO: IUserDAO = DAOProvider.get_user_dao()
+        self.file_service = file_service
 
     # --- CREATE ---
     async def create_user(self, user_data: UserIn, db: AsyncSession) -> UserOut:
         """
         Crée un nouvel utilisateur en hachant son mot de passe.
         """
-        user_dao = self.user_dao_cls(db)
         hashed_password = hash_password(user_data.password)
         user = User(
             firstname=user_data.firstname,
@@ -31,7 +34,15 @@ class UserService:
             createdAt=datetime.now(),
             updatedAt=datetime.now(),
         )
-        created_user = await user_dao.create(user)
+        created_user = await self.userDAO.create(user, db)
+
+        if created_user:
+            try:
+                await self.file_service._get_user_dir(created_user.id, db)
+            except Exception as e:
+                await db.rollback()
+                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Une erreur est survenue : {e}")
+
         return UserOut.model_validate(created_user)
 
     # --- READ ---
@@ -39,16 +50,14 @@ class UserService:
         """
         Récupère un utilisateur par son ID.
         """
-        user_dao = self.user_dao_cls(db)
-        user = await user_dao.get_by_id(user_id)
+        user = await self.userDAO.get_by_id(user_id, db)
         return UserOut.model_validate(user)
 
     async def get_all_users(self, db: AsyncSession) -> List[UserOut]:
         """
         Retourne la liste complète des utilisateurs.
         """
-        user_dao = self.user_dao_cls(db)
-        users: List[User] = await user_dao.get_all_users()
+        users: List[User] = await self.userDAO.get_all_users(db)
         return [UserOut.model_validate(u) for u in users]
 
     async def get_user_by_email(self, email: str, db: AsyncSession) -> UserOut:
@@ -61,8 +70,7 @@ class UserService:
                 detail=f"Adresse email invalide."
             )
         
-        user_dao = self.user_dao_cls(db)
-        user = await user_dao.get_by_email(email)
+        user = await self.userDAO.get_by_email(email, db)
         if not user:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
@@ -74,8 +82,7 @@ class UserService:
         """
         Récupère un utilisateur complet via son email.
         """
-        user_dao = self.user_dao_cls(db)
-        user = await user_dao.get_by_email(email)
+        user = await self.userDAO.get_by_email(email, db)
         if not user:
             raise_auth_exception("Email ou mot de passe incorrect")
         return UserBase.model_validate(user)
@@ -85,23 +92,39 @@ class UserService:
         """
         Met à jour un utilisateur partiellement.
         """
-        user_dao = self.user_dao_cls(db)
-        await user_dao.get_by_id(user_id)
+        await self.userDAO.get_by_id(user_id, db)
         update_data = fields.model_dump(exclude_unset=True)
 
         if "password" in update_data and update_data["password"]:
             update_data["password"] = hash_password(update_data["password"])
         update_data["updated_at"] = datetime.now()
 
-        updated_user = await user_dao.update(user_id, update_data)
+        updated_user = await self.userDAO.update(user_id, update_data, db)
         return UserOut.model_validate(updated_user)
 
 
     # --- DELETE ---
     async def delete_user_by_id(self, user_id: int, db: AsyncSession) -> str:
         """
-        Supprime un utilisateur par ID.
+        Supprime un utilisateur par ID de manière atomique.
         """
-        user_dao = self.user_dao_cls(db)
-        result = await user_dao.delete(user_id)
-        return result
+        try:
+            user = await self.get_user_by_id(user_id, db)
+            result = await self.userDAO.delete(user.id, db)
+
+            if result:
+                await self.file_service.delete_user_dir(user)
+
+            await db.commit()
+            return f"Utilisateur supprimé avec succès."
+
+        except HTTPException:
+            await db.rollback()
+            raise
+
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(status_code=500, detail=f"Erreur interne: {e}")
+
+        
+        

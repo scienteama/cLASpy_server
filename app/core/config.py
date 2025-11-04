@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str | None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    UPLOAD_DIR: str = "data/root"
 
     model_config = {
         "env_file": ".env",
