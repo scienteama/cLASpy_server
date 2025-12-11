@@ -1,4 +1,6 @@
+import importlib
 from logging.config import fileConfig
+import pkgutil
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 import os
@@ -7,15 +9,12 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import Base
-from app.models.user import User
-from app.models.role import Role
-from app.core.config import get_settings, settings 
-
+from app.core.config import get_settings
+from app.models import * 
 
 config = context.config
 fileConfig(config.config_file_name)
 target_metadata = Base.metadata
-
 
 DATABASE_URL = get_settings().DATABASE_URL
 SYNC_DATABASE_URL = DATABASE_URL.replace("asyncpg", "psycopg2")

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import Response
+from http import HTTPStatus
+from fastapi import HTTPException, Response
 import jwt
 from app.core.config import get_settings
 from app.schemas.auth_schema import Token, TokenData
@@ -20,7 +21,7 @@ class AuthService:
     async def authenticate(self, email: str, password: str, db: AsyncSession) -> UserOut:
         user = await self.user_service.get_full_user_by_email(email, db)
         if verify_password(password, user.password):
-            await self.user_service.update_user_by_id(user.id, UserUpdate(lastLogin=datetime.now()), db)
+            await self.user_service.update_user_by_id(user.id, UserUpdate(last_login=datetime.now()), db)
             return UserOut.model_validate(user) 
         else :raise_auth_exception("Email ou mot de passe incorrect")
 
@@ -51,6 +52,7 @@ class AuthService:
                 options={"require": ["exp"]}
             )
             user = payload.get("user")
+            raise HTTPException(401, 'test')
             if not user:
                 raise_auth_exception("Email ou mot de passe incorrect")
             return TokenData(id=user["id"], email=user["email"])

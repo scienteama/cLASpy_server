@@ -1,5 +1,6 @@
+from http import HTTPStatus
 from typing import Protocol
-from fastapi import Response
+from fastapi import HTTPException, Response
 from app.schemas.auth_schema import Token, TokenData
 from app.schemas.user_schema import UserOut
 from sqlalchemy.ext.asyncio import AsyncSession

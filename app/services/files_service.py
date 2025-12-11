@@ -7,6 +7,7 @@ from fastapi import HTTPException, UploadFile
 from app.core.config import Settings, get_settings
 from app.models.user import User
 from app.schemas.file_schema import FileModel, FolderModel
+from app.schemas.role_schema import UserRole
 from app.schemas.user_schema import UserOut
 from app.services.interfaces.files_interface import IFileService
 from app.services.interfaces.user_interface import IUserService
@@ -36,19 +37,37 @@ class FileService(IFileService):
         else:
             target_dir = user_dir
 
+
         if not target_dir.is_relative_to(user_dir):
             raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Accès interdit")
 
         return target_dir
-
+    
+    async def _get_base_dir(self) -> Path:
+        base_dir = self.upload_dir.resolve()
+        base_dir.mkdir(parents=True, exist_ok=True)
+        return base_dir
 
     async def save_file(self, file: UploadFile, user_id: int, db: AsyncSession, sub_path: str | None = None) -> FileModel:
-        target_dir = await self._get_user_dir(user_id, db, sub_path)
+
+        if await self.user_service.user_is_admin(user_id, db):
+            target_dir = await self._get_base_dir()
+            if sub_path and sub_path != '/':
+                target_dir = target_dir / sub_path
+        else:
+            target_dir = await self._get_user_dir(user_id, db, sub_path)
+
+
+        
+        
+        ##target_dir = await self._get_user_dir(user_id, db, sub_path)
         target_dir.mkdir(parents=True, exist_ok=True)
 
         now = datetime.now()
         saved_filename = f"{uuid.uuid4()}_{file.filename}"
         file_path = target_dir / saved_filename
+
+
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -64,7 +83,22 @@ class FileService(IFileService):
         )
 
     async def create_directory(self, user_id: int, name: str, db: AsyncSession,  sub_path: str | None = None) -> str:
-        target_dir = await self._get_user_dir(user_id, db, sub_path) / name
+
+        if await self.user_service.user_is_admin(user_id, db):
+            target_dir = await self._get_base_dir()
+            if sub_path and sub_path != '/':
+                target_dir = target_dir / sub_path
+        else:
+            target_dir = await self._get_user_dir(user_id, db, sub_path)
+
+
+
+
+        
+        target_dir = target_dir / name
+
+
+    
         try:
             target_dir.mkdir(parents=True, exist_ok=False)
             return f"Le dossier {name} a été créé avec succès"
@@ -74,23 +108,34 @@ class FileService(IFileService):
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la création du dossier : {e}")
 
     async def list_directory(self, user_id: int, db: AsyncSession, path: str = ".") -> FolderModel:
-        
-        target_dir = await self._get_user_dir(user_id, db, path)
 
-        def build_folder(directory: Path) -> FolderModel:
+        if await self.user_service.user_is_admin(user_id, db):
+            target_dir = await self._get_base_dir()
+        else:
+            target_dir = await self._get_user_dir(user_id, db, path)
+
+        def build_folder(directory: Path, depth: int = 0) -> FolderModel:
+            """Construit récursivement la structure du dossier avec profondeur."""
+
+            
             folder = FolderModel(
                 id=file_utils.generate_id_from_path(directory),
-                name=directory.name,
+                name=directory.name or "/",  # racine
                 children=[],
                 created_at=datetime.fromtimestamp(directory.stat().st_ctime),
                 modified_at=datetime.fromtimestamp(directory.stat().st_mtime),
+                depth=depth,
             )
-            entries = sorted(os.scandir(directory), key=lambda e: (e.is_dir(), e.name.lower()))
+
+            # Lister et trier le contenu
+            entries = sorted(os.scandir(directory), key=lambda e: (not e.is_dir(), e.name.lower()))
             existing_names = set()
+
             for entry in entries:
                 entry_path = Path(entry.path)
                 if entry.is_dir():
-                    folder.children.append(build_folder(entry_path))
+                    # Appel récursif avec profondeur +1
+                    folder.children.append(build_folder(entry_path, depth + 1))
                 else:
                     true_name = file_utils.extract_true_name(entry.name)
                     true_name = file_utils.get_unique_display_name(true_name, existing_names)
@@ -108,7 +153,7 @@ class FileService(IFileService):
                     )
             return folder
 
-        return build_folder(target_dir)
+        return build_folder(target_dir, depth=0)
 
     async def delete_path(self, item_id: str) -> str:
         path = await file_utils.find_path_by_id(item_id, self.upload_dir)

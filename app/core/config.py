@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import List
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -14,6 +15,8 @@ class Settings(BaseSettings):
     ENV: str = "development"
     PORT: int = 8000
     HOST: str = "localhost"
+
+    ALLOWED_ORIGINS: list[str] = ["https://localhost:8081", "https://127.0.0.1:8081"]
 
     SECRET_KEY: str | None
     ALGORITHM: str = "HS256"

@@ -1,5 +1,4 @@
-from typing import Annotated
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.service_provider import ServiceProvider
 from app.schemas.error_schema import ErrorResponse
@@ -18,32 +17,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.auth_service: IAuthService = ServiceProvider.get_auth_service()
       
-    async def dispatch(self,
-                       request: Request,
-                       call_next):
-        try:
-            if request.method == "OPTIONS":
-                return await call_next(request)
-
-            if request.url.path in PUBLIC_ROUTES:
-                return await call_next(request)
-
-            token = request.cookies.get("token") or request.headers.get("Authorization")
-            if not token:
-                raise_auth_exception("Token manquant")
-
-            user_data = self.auth_service.verify_token(token)
-            if not user_data:
-                raise_auth_exception("Token invalide")
-
-            # Attach user to request
-            request.state.user = user_data
-
+    async def dispatch(self, request: Request, call_next):
+        
+        if request.method == "OPTIONS":
             return await call_next(request)
+        
+        if request.url.path in PUBLIC_ROUTES:
+            return await call_next(request)
+        
+        token = request.cookies.get("token") or request.headers.get("Authorization")
+        if not token:
+            raise_auth_exception("Token manquant")
 
-        except HTTPException as exc:
-            response = ErrorResponse.http_exception_handler(request, exc)
-        except Exception as exc:
-            response = ErrorResponse.generic_exception_handler(request, exc)
+        user_data = self.auth_service.verify_token(token)
+        if not user_data:
+            raise_auth_exception("Token invalide")
 
-        return response
+        # Attach user to request
+        request.state.user = user_data
+        
+        return await call_next(request)

@@ -31,10 +31,12 @@ class ErrorResponse(ApiResponse[dict]):
                 "path": str(request.url.path)
             }
         )
-        return JSONResponse(
+        jsonResponse =  JSONResponse(
             status_code=exc.status_code,
             content=resp.model_dump()
         )
+        jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
+        jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
     
     @staticmethod
     def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -47,7 +49,10 @@ class ErrorResponse(ApiResponse[dict]):
                 "code": 422
             }
         )
-        return JSONResponse(status_code=422, content=response.model_dump())
+        jsonResponse = JSONResponse(status_code=422, content=response.model_dump())
+        jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
+        jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
+        return jsonResponse
 
 
     @staticmethod
@@ -55,7 +60,10 @@ class ErrorResponse(ApiResponse[dict]):
         resp = ErrorResponse.from_exception(exc, code=HTTPStatus.INTERNAL_SERVER_ERROR.value)
         if isinstance(resp.data, dict):
             resp.data["path"] = str(request.url.path)
-        return JSONResponse(
+        jsonResponse =  JSONResponse(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             content=resp.model_dump()
         )
+        jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
+        jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
+        return jsonResponse

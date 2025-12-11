@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from app.core.dao_provider import DAOProvider
 from app.dao.interfaces.i_user_dao import IUserDAO
 from app.models.user import User
+from app.schemas.role_schema import UserRole
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
 from app.services.interfaces.files_interface import IFileService
 from app.services.interfaces.user_interface import IUserService
@@ -31,8 +32,8 @@ class UserService(IUserService):
             email=user_data.email,
             password=hashed_password,
             role_id=user_data.role_id,
-            createdAt=datetime.now(),
-            updatedAt=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
         )
         created_user = await self.userDAO.create(user, db)
 
@@ -125,6 +126,14 @@ class UserService(IUserService):
         except Exception as e:
             await db.rollback()
             raise HTTPException(status_code=500, detail=f"Erreur interne: {e}")
+        
+    async def user_is_admin(self, user_id: int, db: AsyncSession) -> bool:
+        try:
+            user = await self.get_user_by_id(user_id, db)
+            return user.role_id == UserRole.admin
+        except HTTPException:
+            raise
+
 
         
         

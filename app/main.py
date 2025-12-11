@@ -29,10 +29,11 @@ config = get_settings()
 # App FastAPI
 app = FastAPI(lifespan=lifespan, title=config.app_name)
 
+
 # Middlewares
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://localhost:8081", "https://127.0.0.1:8081"],
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

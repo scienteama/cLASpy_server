@@ -8,10 +8,10 @@ class UserBase(BaseModel):
     lastname: str
     email: str
     password: str
-    createdAt: datetime
-    updatedAt: datetime
-    lastLogin: Optional[datetime] = None 
-    role_id: int = Field(..., alias="roleId")
+    created_at: datetime
+    updated_at: datetime
+    last_login: Optional[datetime] = None 
+    role_id: int
 
     class Config:
         from_attributes = True
@@ -22,7 +22,7 @@ class UserIn(BaseModel):
     lastname: Annotated[str,constr(min_length=1, max_length=50)]
     email: EmailStr
     password: Annotated[str,constr(min_length=8, max_length=72)]
-    role_id: int = Field(..., alias="roleId")
+    role_id: int
 
     class Config:
         validate_by_name = True
@@ -32,10 +32,10 @@ class UserOut(BaseModel):
     firstname: str
     lastname: str
     email: EmailStr
-    createdAt: datetime
-    updatedAt: datetime
-    lastLogin: Optional[datetime] = Field(None)
-    role_id: int = Field(..., alias="roleId")
+    created_at: datetime
+    updated_at: datetime
+    last_login: Optional[datetime] = Field(None)
+    role_id: int
 
     class Config:
         from_attributes = True
@@ -46,5 +46,5 @@ class UserUpdate(BaseModel):
     lastname: Optional[Annotated[str, constr(min_length=1, max_length=50)]] = None
     email: Optional[EmailStr] = None
     password: Optional[Annotated[str, constr(min_length=8)]] = None
-    role_id: Optional[int] = Field(default=None, alias="roleId")
-    lastLogin: Optional[datetime] = None
+    role_id: Optional[int] = None
+    last_login: Optional[datetime] = None

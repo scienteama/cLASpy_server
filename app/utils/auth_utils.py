@@ -1,9 +1,7 @@
 from http import HTTPStatus
 import os
-from fastapi import HTTPException, Response
+from fastapi import HTTPException
 from pwdlib import PasswordHash
-
-from app.schemas.auth_schema import CookieConfig, Token
 
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""

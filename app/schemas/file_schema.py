@@ -18,6 +18,7 @@ class FolderModel(BaseModel):
     type: str = "folder"
     created_at: datetime
     modified_at: datetime
+    depth: int
     children: List[Union["FileModel", "FolderModel"]] = Field(default_factory=list)
 
 # pour références récursives

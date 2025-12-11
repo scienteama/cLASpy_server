@@ -23,3 +23,6 @@ class IUserService(Protocol):
 
     async def get_all_users(self, db: AsyncSession) -> List[UserOut]:
         ...
+
+    async def user_is_admin(self, user_id: int, db: AsyncSession) -> bool:
+        ...
