@@ -39,9 +39,21 @@ async def seed():
 
         # ---- Utilisateurs par défaut ----
         users_data = [
-            {"firstname": "User", "lastname": "Admin", "email": "useradmin@example.com", "password": "Azerty1234!", "role_name": "admin"},
-            {"firstname": "User", "lastname": "Power", "email": "userpower@example.com", "password": "Azerty1234!", "role_name": "poweruser"},
-            {"firstname": "User", "lastname": "User", "email": "user@example.com", "password": "Azerty1234!", "role_name": "user"},
+            {"firstname": "User",
+             "lastname": "Admin",
+             "email": "useradmin@example.com",
+             "password": "Azerty1234!",
+             "role_name": "admin"},
+            {"firstname": "User",
+             "lastname": "Power",
+             "email": "userpower@example.com",
+             "password": "Azerty1234!",
+             "role_name": "poweruser"},
+            {"firstname": "User",
+             "lastname": "User",
+             "email": "user@example.com",
+             "password": "Azerty1234!",
+             "role_name": "user"},
         ]
 
         for u in users_data:

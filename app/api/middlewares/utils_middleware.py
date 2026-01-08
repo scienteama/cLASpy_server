@@ -4,6 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import os
 
+
 class UtilsMiddleware(BaseHTTPMiddleware):
     """
     Middlewares utilitaires.

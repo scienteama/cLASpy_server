@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 # URL de connexion async
 config = get_settings()
-DATABASE_URL = config.DATABASE_URL  
+DATABASE_URL = config.DATABASE_URL
 
 # Création de l'engine async
 engine = create_async_engine(DATABASE_URL, echo=False)
@@ -19,6 +19,7 @@ async_session = sessionmaker(
 
 metadata = MetaData()
 Base = declarative_base()
+
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:

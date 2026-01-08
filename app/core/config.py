@@ -3,6 +3,7 @@ from typing import List
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
+
 class Settings(BaseSettings):
     app_name: str = "cLASpy_Server"
 

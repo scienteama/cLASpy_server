@@ -2,6 +2,7 @@ from typing import Protocol, List
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 class IUserService(Protocol):
     async def create_user(self, user: UserIn, db: AsyncSession) -> UserOut:
         ...

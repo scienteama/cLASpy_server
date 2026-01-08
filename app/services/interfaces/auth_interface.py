@@ -5,6 +5,7 @@ from app.schemas.auth_schema import Token, TokenData
 from app.schemas.user_schema import UserOut
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 class IAuthService(Protocol):
     """
     Interface pour le service AuthService.

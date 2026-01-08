@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 from app.models.user import User
 from app.utils.db_error import catch_db_errors
 
+
 class UserDAO:
 
     @catch_db_errors(message_model="Erreur lors de la création de l'utilisateur")

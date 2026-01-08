@@ -4,6 +4,7 @@ from pydantic.generics import GenericModel
 
 T = TypeVar("T")
 
+
 class ApiResponse(GenericModel, Generic[T]):
     """
     Schéma de réponse API générique.

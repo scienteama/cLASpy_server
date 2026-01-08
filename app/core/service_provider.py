@@ -10,6 +10,7 @@ from app.services.interfaces.user_interface import IUserService
 from app.services.modules_service import ModulesService
 from app.services.users_service import UserService
 
+
 class ServiceProvider:
     """
     Gestion des singletons de service avec typage via interfaces.
@@ -31,7 +32,7 @@ class ServiceProvider:
         # Dépendances
         cls._file_service = FileService(cls._user_service)
         cls._auth_service = AuthService(cls._user_service)
-        
+
         # Services indépendants
         cls._module_service = ModulesService()
         cls._claspyml_service = ClaspyMLService()
@@ -53,13 +54,13 @@ class ServiceProvider:
         if cls._file_service is None:
             cls._file_service = FileService(cls.get_user_service())
         return cls._file_service
-    
+
     @classmethod
     def get_module_service(cls) -> IModuleService:
         if cls._module_service is None:
             cls._module_service = ModulesService()
         return cls._module_service
-    
+
     @classmethod
     def get_claspyml_service(cls) -> IClaspyMLService:
         if cls._claspyml_service is None:

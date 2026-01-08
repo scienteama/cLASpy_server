@@ -3,6 +3,7 @@ import os
 from fastapi import HTTPException
 from pwdlib import PasswordHash
 
+
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""
     if not password:
@@ -14,9 +15,10 @@ def hash_password(password: str) -> str:
     salt = os.urandom(16)
     return password_hash.hash(password, salt=salt)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a hashed password against a plain password."""
-    if not plain_password: 
+    if not plain_password:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail=f"Paramètres invalides"
@@ -24,11 +26,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
 
+
 def raise_auth_exception(detail: str):
     """Raise a standardized auth-related HTTPException with Bearer auth header."""
     raise HTTPException(
         status_code=HTTPStatus.UNAUTHORIZED,
         detail=detail,
         headers={"WWW-Authenticate": "Bearer"},)
-
-

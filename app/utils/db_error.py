@@ -3,6 +3,7 @@ from sqlalchemy.exc import DBAPIError
 from fastapi import HTTPException
 from http import HTTPStatus
 
+
 def catch_db_errors(message_model: str = ""):
     def decorator(func):
         @wraps(func)

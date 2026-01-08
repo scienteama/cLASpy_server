@@ -11,20 +11,21 @@ PUBLIC_ROUTES = {
     "/api/modules/list/claspy-modules",
 }
 
+
 class AuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app):
         super().__init__(app)
         self.auth_service: IAuthService = ServiceProvider.get_auth_service()
-      
+
     async def dispatch(self, request: Request, call_next):
-        
+
         if request.method == "OPTIONS":
             return await call_next(request)
-        
+
         if request.url.path in PUBLIC_ROUTES:
             return await call_next(request)
-        
+
         token = request.cookies.get("token") or request.headers.get("Authorization")
         if not token:
             raise_auth_exception("Token manquant")
@@ -35,5 +36,5 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Attach user to request
         request.state.user = user_data
-        
+
         return await call_next(request)

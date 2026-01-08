@@ -16,6 +16,8 @@ from app.api.routers.auth_router import router as auth_router
 from app.schemas.error_schema import ErrorResponse
 
 # Lifespan pour FastAPI
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Création de la connexion à la DB au démarrage
@@ -74,5 +76,3 @@ if __name__ == "__main__":
         ssl_keyfile=(config.PROJECT_ROOT / "certificats/claspy_key.pem" if use_https else None),
         ssl_certfile=(config.PROJECT_ROOT / "certificats/claspy_cert.pem" if use_https else None),
     )
-
- 

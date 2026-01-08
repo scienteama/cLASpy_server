@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
+
 class ClaspyModule(BaseModel):
     name: str
     version: Optional[str]

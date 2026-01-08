@@ -12,10 +12,12 @@ from typing import List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 class UserService(IUserService):
     """
     Service de gestion des utilisateurs.
     """
+
     def __init__(self):
         self.userDAO: IUserDAO = DAOProvider.get_user_dao()
 
@@ -62,7 +64,7 @@ class UserService(IUserService):
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail=f"Adresse email invalide."
             )
-        
+
         user = await self.userDAO.get_by_email(email, db)
         if not user:
             raise HTTPException(
@@ -70,7 +72,7 @@ class UserService(IUserService):
                 detail=f"Adresse email inconnue."
             )
         return UserOut.model_validate(user)
-    
+
     async def get_full_user_by_email(self, email: str, db: AsyncSession) -> UserBase:
         """
         Récupère un utilisateur complet via son email.
@@ -79,7 +81,7 @@ class UserService(IUserService):
         if not user:
             raise_auth_exception("Email ou mot de passe incorrect")
         return UserBase.model_validate(user)
-    
+
     # --- UPDATE ---
     async def update_user_by_id(self, user_id: int, fields: UserUpdate, db: AsyncSession) -> UserOut:
         """
@@ -95,8 +97,8 @@ class UserService(IUserService):
         updated_user = await self.userDAO.update(user_id, update_data, db)
         return UserOut.model_validate(updated_user)
 
-
     # --- DELETE ---
+
     async def delete_user_by_id(self, user_id: int, db: AsyncSession) -> str:
         """
         Supprime un utilisateur par ID de manière atomique.
@@ -114,14 +116,10 @@ class UserService(IUserService):
         except Exception as e:
             await db.rollback()
             raise HTTPException(status_code=500, detail=f"Erreur interne: {e}")
-        
+
     async def user_is_admin(self, user_id: int, db: AsyncSession) -> bool:
         try:
             user = await self.get_user_by_id(user_id, db)
             return user.role_id == UserRole.admin
         except HTTPException:
             raise
-
-
-        
-        

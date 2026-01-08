@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import UserOut
 from app.services.interfaces.user_interface import IUserService
 
+
 class IFileService(Protocol):
-    async def save_file(self, file: UploadFile, user_id: int, db: AsyncSession, sub_path: str | None = None) -> FileModel:
+    async def save_file(self, file: UploadFile, user_id: int, db: AsyncSession,
+                        sub_path: str | None = None) -> FileModel:
         """Sauvegarde un fichier et retourne ses métadonnées."""
         ...
 
@@ -28,7 +30,7 @@ class IFileService(Protocol):
         """Renomme un fichier ou dossier par son ID."""
         ...
 
-    async def create_directory(self, user_id: int, name: str, db: AsyncSession,  sub_path: str | None = None) -> str:
+    async def create_directory(self, user_id: int, name: str, db: AsyncSession, sub_path: str | None = None) -> str:
         """Crée un dossier à l'emplacement spécifié."""
         ...
 

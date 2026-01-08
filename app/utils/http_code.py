@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class HTTPCode(IntEnum):
     OK = 200
     CREATED = 201

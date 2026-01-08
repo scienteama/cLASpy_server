@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.schemas.response_schema import ApiResponse
 
+
 class ErrorResponse(ApiResponse[dict]):
 
     isOk: bool = False
@@ -19,7 +20,7 @@ class ErrorResponse(ApiResponse[dict]):
                 "code": code,
             },
         )
-    
+
     @staticmethod
     def http_exception_handler(request: Request, exc: HTTPException):
         resp = ErrorResponse(
@@ -31,14 +32,14 @@ class ErrorResponse(ApiResponse[dict]):
                 "path": str(request.url.path)
             }
         )
-        jsonResponse =  JSONResponse(
+        jsonResponse = JSONResponse(
             status_code=exc.status_code,
             content=resp.model_dump()
         )
         jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
         jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
         return jsonResponse
-    
+
     @staticmethod
     def validation_exception_handler(request: Request, exc: RequestValidationError):
         response = ErrorResponse(
@@ -55,13 +56,12 @@ class ErrorResponse(ApiResponse[dict]):
         jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
         return jsonResponse
 
-
     @staticmethod
     def generic_exception_handler(request: Request, exc: Exception):
         resp = ErrorResponse.from_exception(exc, code=HTTPStatus.INTERNAL_SERVER_ERROR.value)
         if isinstance(resp.data, dict):
             resp.data["path"] = str(request.url.path)
-        jsonResponse =  JSONResponse(
+        jsonResponse = JSONResponse(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             content=resp.model_dump()
         )

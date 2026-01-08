@@ -2,14 +2,17 @@ from typing import Any
 from fastapi import Response
 from pydantic import BaseModel
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 class TokenData(BaseModel):
     id: int
     email: str
     role_id: int
+
 
 class CookieConfig(BaseModel):
     key: str
@@ -23,6 +26,7 @@ class CookieConfig(BaseModel):
     def max_age(self) -> int:
         """Retourne max_age en secondes pour set_cookie."""
         return self.max_age_minutes * 60
+
 
 def set_http_only_cookie(res: Response, config: CookieConfig):
     if config:

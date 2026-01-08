@@ -1,16 +1,17 @@
 import inspect
 from typing import Any, List, Optional, Dict
 
-try: 
+try:
     import cLASpy_ML
-    from cLASpy_ML import cLASpy_Classes 
+    from cLASpy_ML import cLASpy_Classes
     import sklearn.ensemble as algorithms
     from app.utils.claspy_ml_utils import enrich_algorithm_params
-except ModuleNotFoundError: 
+except ModuleNotFoundError:
     cLASpy_ML = None
     cLASpy_Classes = None
     algorithms = None
     enrich_algorithm_params = None
+
 
 class ClaspyMLService:
     """
@@ -36,7 +37,7 @@ class ClaspyMLService:
         if self.classes is not None:
             return f"core_version : {self.classes.cLASpy_Core_version}"
         return "Plugin cLASpy_ML non chargé."
-    
+
     def get_all_algorithms(self) -> List[str]:
         """
         Retourne la liste des algorithmes disponibles dans sklearn.ensemble.
@@ -49,8 +50,7 @@ class ClaspyMLService:
             if not name.startswith("_")
         ]
         return algo_names
-        
-         
+
     def get_algorithm_parameters(self, name: str) -> Optional[Dict[str, dict]]:
         """
         Retourne les paramètres enrichis d'un algorithme sklearn.ensemble

@@ -10,6 +10,7 @@ from app.services.interfaces.user_interface import IUserService
 
 router = APIRouter()
 
+
 @router.post("/add", response_model=ApiResponse[UserOut])
 async def register_user(req: Request,
                         user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
@@ -20,6 +21,7 @@ async def register_user(req: Request,
     """
     new_user = await user_service.create_user(user, db)
     return ApiResponse[UserOut](data=new_user)
+
 
 @router.patch("/update/{user_id}", response_model=ApiResponse[UserOut])
 async def update_user(user_id: int,
@@ -32,6 +34,7 @@ async def update_user(user_id: int,
     updated_user = await user_service.update_user_by_id(user_id, fields, db)
     return ApiResponse[UserOut](data=updated_user)
 
+
 @router.delete("/delete/{user_id}", response_model=ApiResponse[str])
 async def delete_user(user_id: int,
                       user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
@@ -41,6 +44,7 @@ async def delete_user(user_id: int,
     """
     result = await user_service.delete_user_by_id(user_id, db)
     return ApiResponse[str](data=result)
+
 
 @router.get("/get-by-id/{user_id}", response_model=ApiResponse[UserOut])
 async def get_user(user_id: int,
@@ -52,6 +56,7 @@ async def get_user(user_id: int,
     user = await user_service.get_user_by_id(user_id, db)
     return ApiResponse[UserOut](data=user)
 
+
 @router.get("/get-by-email", response_model=ApiResponse[UserOut])
 async def get_user(email: str,
                    user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
@@ -62,6 +67,7 @@ async def get_user(email: str,
     user = await user_service.get_user_by_email(email, db)
     return ApiResponse[UserOut](data=user)
 
+
 @router.get("/me", response_model=ApiResponse[UserOut])
 async def get_me(req: Request,
                  user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],
@@ -71,6 +77,7 @@ async def get_me(req: Request,
     """
     user = await user_service.get_user_by_id(req.state.user.id, db)
     return ApiResponse[UserOut](data=user)
+
 
 @router.get("/all", response_model=ApiResponse[List[UserOut]])
 async def get_all_users(user_service: Annotated[IUserService, Depends(lambda: ServiceProvider.get_user_service())],

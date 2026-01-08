@@ -4,6 +4,7 @@ import os
 import uuid
 from pathlib import Path as PathLib
 
+
 def detect_mimetype(file_path: PathLib, content_type: str | None = None) -> str:
     """
     Détecte le mimetype d'un fichier.
@@ -37,13 +38,14 @@ def extract_true_name(saved_name: str) -> str:
         return parts[1]
     except (ValueError, IndexError):
         return saved_name
-    
+
+
 def get_unique_display_name(name: str, existing_names: set) -> str:
     """
     Génère un nom d'affichage unique pour un fichier en évitant les doublons.
 
     Lorsqu'un fichier avec le même nom existe déjà dans la liste `existing_names`,
-    cette fonction ajoute un suffixe numérique entre parenthèses avant l'extension 
+    cette fonction ajoute un suffixe numérique entre parenthèses avant l'extension
     pour le rendre unique. Par exemple : "document.txt" → "document (1).txt".
     """
     base, ext = os.path.splitext(name)
@@ -58,6 +60,7 @@ def get_unique_display_name(name: str, existing_names: set) -> str:
 def generate_id_from_path(path: PathLib) -> str:
     """Génère un identifiant unique basé sur le chemin absolu."""
     return hashlib.sha1(str(path.resolve()).encode()).hexdigest()
+
 
 async def find_path_by_id(item_id: str, folder_path: PathLib) -> PathLib | None:
     """
@@ -76,6 +79,7 @@ async def find_path_by_id(item_id: str, folder_path: PathLib) -> PathLib | None:
                 return dir_path
     return None
 
+
 def compute_checksum(file_path: PathLib) -> str:
     """
     Calcule le checksum SHA-1 d'un fichier.
@@ -90,7 +94,7 @@ def compute_checksum(file_path: PathLib) -> str:
 def find_duplicate_file(file_bytes: bytes, folder_path: PathLib) -> PathLib | None:
     """
     Vérifie si un fichier identique (même checksum SHA-1) existe déjà dans un dossier.
-    
+
     Args:
         file_bytes: Contenu du fichier uploadé.
         folder_path: Dossier où rechercher les fichiers existants.

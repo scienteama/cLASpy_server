@@ -147,7 +147,8 @@ class FileService(IFileService):
     # ------------------------
     # Dossier
     # ------------------------
-    async def create_directory(self, user_id: int, name: str, db: AsyncSession, parent_id: uuid.UUID | None = None) -> str:
+    async def create_directory(self, user_id: int, name: str, db: AsyncSession,
+                               parent_id: uuid.UUID | None = None) -> str:
         print(parent_id)
         folder = File(
             id=uuid.uuid4(),
@@ -161,7 +162,8 @@ class FileService(IFileService):
         await FileDAO.commit(db)
         return f"Dossier '{name}' créé avec succès"
 
-    async def list_directory(self, user_id: int, role_id: int, db: AsyncSession, parent_id: uuid.UUID | None = None, depth: int = 0) -> FolderModel:
+    async def list_directory(self, user_id: int, role_id: int, db: AsyncSession,
+                             parent_id: uuid.UUID | None = None, depth: int = 0) -> FolderModel:
 
         entries = await FileDAO.list_children(db, user_id, role_id, parent_id)
 
@@ -198,17 +200,17 @@ class FileService(IFileService):
                     modified_at=entry.updated_at,
                     size_bytes=entry.size_bytes,
                     mimeType=entry.mime_type,
-                    user_id= entry.user_id
+                    user_id=entry.user_id
                 )
                 folder.children.append(file_model)
                 folder.size_bytes += entry.size_bytes or 0
 
         return folder
 
-
     # ------------------------
     # Suppression soft → corbeille (récursive)
     # ------------------------
+
     async def delete_path(self, item_id: uuid.UUID, db: AsyncSession) -> str:
         file = await FileDAO.get_file(db, item_id)
 
