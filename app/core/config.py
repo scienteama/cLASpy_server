@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str | None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    UPLOAD_DIR: str = "data/root"
+    UPLOAD_DIR: str = "data/storage"
+    TRASH_DIR: str = "data/storage/trash"
+    RECOVERY_DIR: str = "data/storage/recovery"
 
     model_config = {
         "env_file": ".env",

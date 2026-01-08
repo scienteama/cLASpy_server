@@ -12,7 +12,7 @@ class IFileService(Protocol):
         """Sauvegarde un fichier et retourne ses métadonnées."""
         ...
 
-    async def list_directory(self, user_id: int, db: AsyncSession, path: str = ".") -> FolderModel:
+    async def list_directory(self, user_id: int, role_id: int, db: AsyncSession, path: str = ".") -> FolderModel:
         """Retourne l'arborescence d'un dossier selon les droits de l'utilisateur."""
         ...
 

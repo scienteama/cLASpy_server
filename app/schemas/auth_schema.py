@@ -9,6 +9,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     id: int
     email: str
+    role_id: int
 
 class CookieConfig(BaseModel):
     key: str

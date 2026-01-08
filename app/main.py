@@ -9,7 +9,7 @@ from app.core.registry import RouterRegistry
 from app.core.service_provider import ServiceProvider
 from app.database import engine
 from app.api.routers.users_router import router as users_router
-from app.api.routers.files_router import router as file_router
+from app.api.routers.file_router import router as file_router
 from app.api.routers.modules_router import router as modules_router
 from app.api.routers.claspy_ml_router import router as claspy_ml_router
 from app.api.routers.auth_router import router as auth_router

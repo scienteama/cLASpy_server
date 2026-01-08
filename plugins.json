@@ -1,19 +1,19 @@
 [
   {
     "name": "claspy_ml",
-    "link": "git+ssh://git@scienteama.local:22/developpeurs/claspy_t.git@test_setup_vg#egg=cLASpy_ML",
+    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@main#egg=cLASpy_ML",
     "description": "Module de Machine Learning de cLASpy",
     "tooltip": "Permet l'entraînement et l'évaluation de modèles ML"
   },
   {
     "name": "claspy_dl",
-    "link": "git+ssh://git@scienteama.local:22/developpeurs/claspy_t.git@test_setup_vg#egg=cLASpy_DL",
+    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@main#egg=cLASpy_DL",
     "description": "Module Deep Learning",
     "tooltip": "Réseaux de neurones et modèles avancés"
   },
   {
     "name": "claspy_features",
-    "link": "git+ssh://git@scienteama.local:22/developpeurs/claspy_t.git@test_setup_vg#egg=cLASpy_Features",
+    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@main#egg=cLASpy_Features",
     "description": "Extraction et transformation des features",
     "tooltip": "Prépare les données pour ML/DL"
   }

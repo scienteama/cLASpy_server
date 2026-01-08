@@ -23,22 +23,23 @@ class ServiceProvider:
     @classmethod
     def init_services(cls):
         """
-        Initialise les singletons et résout les dépendances circulaires.
+        Initialise les singletons dans le bon ordre.
         """
+
         cls._user_service = UserService()
-        cls._file_service = FileService()
-        
-        cls._user_service.file_service = cls._file_service
-        cls._file_service.user_service = cls._user_service
- 
+
+        # Dépendances
+        cls._file_service = FileService(cls._user_service)
         cls._auth_service = AuthService(cls._user_service)
+        
+        # Services indépendants
         cls._module_service = ModulesService()
         cls._claspyml_service = ClaspyMLService()
 
     @classmethod
     def get_user_service(cls) -> IUserService:
         if cls._user_service is None:
-            cls._user_service = UserService(cls.get_file_service())
+            cls._user_service = UserService()
         return cls._user_service
 
     @classmethod

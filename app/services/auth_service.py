@@ -26,7 +26,7 @@ class AuthService:
         else :raise_auth_exception("Email ou mot de passe incorrect")
 
     async def create_access_token(self, user: UserOut) -> Token:
-        to_encode = {"user": TokenData(id=user.id, email=user.email).model_dump()}
+        to_encode = {"user": TokenData(id=user.id, email=user.email, role_id=user.role_id).model_dump()}
         try:
             expire_minutes = max(int(self.config.ACCESS_TOKEN_EXPIRE_MINUTES), 1)
         except (TypeError, ValueError):
@@ -52,10 +52,9 @@ class AuthService:
                 options={"require": ["exp"]}
             )
             user = payload.get("user")
-            raise HTTPException(401, 'test')
             if not user:
                 raise_auth_exception("Email ou mot de passe incorrect")
-            return TokenData(id=user["id"], email=user["email"])
+            return TokenData(id=user["id"], email=user["email"], role_id=user["role_id"])
         except jwt.ExpiredSignatureError:
             raise_auth_exception("Session utilisateur expirée")
         except jwt.InvalidTokenError:

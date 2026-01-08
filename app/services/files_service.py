@@ -1,202 +1,275 @@
 from pathlib import Path
-import os
 import shutil
-from datetime import datetime
 import uuid
-from fastapi import HTTPException, UploadFile
-from app.core.config import Settings, get_settings
-from app.models.user import User
-from app.schemas.file_schema import FileModel, FolderModel
-from app.schemas.role_schema import UserRole
-from app.schemas.user_schema import UserOut
-from app.services.interfaces.files_interface import IFileService
-from app.services.interfaces.user_interface import IUserService
-from app.utils import file_utils
+import hashlib
+from datetime import datetime
+from fastapi import UploadFile, HTTPException
 from http import HTTPStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.dao.file_dao import FileDAO
+from app.schemas.file_schema import FileModel, FolderModel
+from app.services.interfaces.files_interface import IFileService
+from app.services.interfaces.user_interface import IUserService
+from app.models.file import File
+from app.core.config import get_settings, Settings
+
+
 class FileService(IFileService):
     """
-    Service métier pour la gestion des fichiers et dossiers.
+    Service de gestion des fichiers :
+    - Stockage basé sur hash
+    - Unicité sur (hash + name)
+    - Soft delete déplace le fichier physique vers une corbeille
+    - Réactivation manuelle déplace vers un dossier recovery
     """
-    def __init__(self, user_service: IUserService | None = None):
+
+    def __init__(self, user_service: IUserService):
         self.user_service = user_service
         self.config: Settings = get_settings()
-        self.upload_dir = Path(self.config.UPLOAD_DIR)
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.storage_root = Path(self.config.UPLOAD_DIR)
+        self.trash_root = Path(self.config.TRASH_DIR)
+        self.recovery_root = Path(self.config.RECOVERY_DIR)
 
+        # Créer les dossiers si manquants
+        for path in [self.storage_root, self.trash_root, self.recovery_root]:
+            path.mkdir(parents=True, exist_ok=True)
 
-    async def _get_user_dir(self, user_id: int, db: AsyncSession, sub_path: str | None = None) -> Path:
-        user = await self.user_service.get_user_by_id(user_id, db)
-        folder_name = f"{user.id}_{user.firstname[0].lower()}{user.lastname.lower()}"
-        user_dir = (self.upload_dir / "users" / folder_name).resolve()
-        user_dir.mkdir(parents=True, exist_ok=True)
+    # ------------------------
+    # Utils
+    # ------------------------
+    def _compute_physical_path(self, file_hash: str) -> Path:
+        """Chemin physique basé sur le hash (2 niveaux de sharding)."""
+        shard1 = file_hash[:2]
+        shard2 = file_hash[2:4]
+        return self.storage_root / shard1 / shard2 / file_hash
 
-        if sub_path:
-            target_dir = (user_dir / sub_path.lstrip("/\\")).resolve()
-        else:
-            target_dir = user_dir
+    @staticmethod
+    def _compute_file_hash(path: Path) -> str:
+        """Calcule le SHA256 du fichier."""
+        sha256 = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256.update(chunk)
+        return sha256.hexdigest()
 
+    # ------------------------
+    # Upload / création fichier
+    # ------------------------
+    async def save_file(
+        self,
+        file: UploadFile,
+        user_id: int,
+        db: AsyncSession,
+        parent_id: uuid.UUID | None = None,
+    ) -> FileModel:
+        temp_path = self.storage_root / f"tmp_{uuid.uuid4()}"
+        temp_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not target_dir.is_relative_to(user_dir):
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="Accès interdit")
-
-        return target_dir
-    
-    async def _get_base_dir(self) -> Path:
-        base_dir = self.upload_dir.resolve()
-        base_dir.mkdir(parents=True, exist_ok=True)
-        return base_dir
-
-    async def save_file(self, file: UploadFile, user_id: int, db: AsyncSession, sub_path: str | None = None) -> FileModel:
-
-        if await self.user_service.user_is_admin(user_id, db):
-            target_dir = await self._get_base_dir()
-            if sub_path and sub_path != '/':
-                target_dir = target_dir / sub_path
-        else:
-            target_dir = await self._get_user_dir(user_id, db, sub_path)
-
-
-        
-        
-        ##target_dir = await self._get_user_dir(user_id, db, sub_path)
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        now = datetime.now()
-        saved_filename = f"{uuid.uuid4()}_{file.filename}"
-        file_path = target_dir / saved_filename
-
-
-
-        with open(file_path, "wb") as buffer:
+        # Écriture temporaire
+        with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-
-        return FileModel(
-            id=file_utils.generate_id_from_path(file_path),
-            name=file.filename,
-            saved_as=saved_filename,
-            created_at=now,
-            modified_at=now,
-            size_bytes=file_path.stat().st_size,
-            mimeType=file_utils.detect_mimetype(file_path, file.content_type),
+        # Calcul du hash
+        file_hash = self._compute_file_hash(temp_path)
+        # Vérification existence selon hash + name
+        return await self._handle_existing_file(
+            db=db,
+            file_hash=file_hash,
+            temp_path=temp_path,
+            logical_name=file.filename,
+            user_id=user_id,
+            parent_id=parent_id,
+            mime_type=file.content_type
         )
 
-    async def create_directory(self, user_id: int, name: str, db: AsyncSession,  sub_path: str | None = None) -> str:
+    async def _handle_existing_file(
+        self,
+        db: AsyncSession,
+        file_hash: str,
+        temp_path: Path,
+        logical_name: str,
+        user_id: int,
+        parent_id: uuid.UUID | None = None,
+        mime_type: str = "",
+    ) -> FileModel:
+        """
+        Unicité basée sur hash + name :
+        - Même hash + même nom actif → conflit
+        - Même hash + nom différent → nouvelle entrée
+        - Fichiers deleted ignorés (physiquement en corbeille)
+        """
+        # Vérifier si fichier actif existe avec même hash + name
 
-        if await self.user_service.user_is_admin(user_id, db):
-            target_dir = await self._get_base_dir()
-            if sub_path and sub_path != '/':
-                target_dir = target_dir / sub_path
-        else:
-            target_dir = await self._get_user_dir(user_id, db, sub_path)
+        existing_active = await FileDAO.get_active_file_by_hash_and_name(db, file_hash, logical_name, user_id, parent_id)
 
+        if existing_active:
+            if temp_path.exists():
+                temp_path.unlink()
+                raise HTTPException(
+                    status_code=409,
+                    detail="Fichier déjà existant dans ce dossier"
+                )
 
+        # Déplacement physique
+        physical_path = self._compute_physical_path(file_hash)
+        physical_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if not physical_path.exists() and temp_path.exists():
+            shutil.move(str(temp_path), physical_path)
+        elif temp_path.exists():
+            temp_path.unlink()
 
-        
-        target_dir = target_dir / name
+        # Création entrée en base
+        db_file = File(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            parent_id=parent_id,
+            logical_name=logical_name,
+            is_directory=False,
+            hash=file_hash,
+            mime_type=mime_type,
+            size_bytes=physical_path.stat().st_size if physical_path.exists() else 0,
+            status="active",
+        )
+        await FileDAO.add_file(db, db_file)
+        await FileDAO.commit(db)
 
+        return FileModel(
+            id=str(db_file.id),
+            name=db_file.logical_name,
+            saved_as=db_file.hash,
+            created_at=db_file.created_at,
+            modified_at=db_file.updated_at,
+            size_bytes=db_file.size_bytes,
+            mimeType=db_file.mime_type,
+        )
 
-    
-        try:
-            target_dir.mkdir(parents=True, exist_ok=False)
-            return f"Le dossier {name} a été créé avec succès"
-        except FileExistsError:
-            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=f"Le dossier {name} existe déjà.")
-        except Exception as e:
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la création du dossier : {e}")
+    # ------------------------
+    # Dossier
+    # ------------------------
+    async def create_directory(self, user_id: int, name: str, db: AsyncSession, parent_id: uuid.UUID | None = None) -> str:
+        print(parent_id)
+        folder = File(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            parent_id=parent_id,
+            logical_name=name,
+            is_directory=True,
+            status="active"
+        )
+        await FileDAO.add_file(db, folder)
+        await FileDAO.commit(db)
+        return f"Dossier '{name}' créé avec succès"
 
-    async def list_directory(self, user_id: int, db: AsyncSession, path: str = ".") -> FolderModel:
+    async def list_directory(self, user_id: int, role_id: int, db: AsyncSession, parent_id: uuid.UUID | None = None, depth: int = 0) -> FolderModel:
 
-        if await self.user_service.user_is_admin(user_id, db):
-            target_dir = await self._get_base_dir()
-        else:
-            target_dir = await self._get_user_dir(user_id, db, path)
+        entries = await FileDAO.list_children(db, user_id, role_id, parent_id)
 
-        def build_folder(directory: Path, depth: int = 0) -> FolderModel:
-            """Construit récursivement la structure du dossier avec profondeur."""
+        folder = FolderModel(
+            id=str(parent_id) if parent_id else "root",
+            name="/" if parent_id is None else "",
+            depth=depth,
+            created_at=datetime.now(),
+            modified_at=datetime.now(),
+            children=[],
+            size_bytes=0,
+            user_id=user_id
+        )
 
-            
-            folder = FolderModel(
-                id=file_utils.generate_id_from_path(directory),
-                name=directory.name or "/",  # racine
-                children=[],
-                created_at=datetime.fromtimestamp(directory.stat().st_ctime),
-                modified_at=datetime.fromtimestamp(directory.stat().st_mtime),
-                depth=depth,
-            )
+        for entry in entries:
+            if entry.is_directory:
+                subfolder = await self.list_directory(
+                    user_id=user_id,
+                    role_id=role_id,
+                    db=db,
+                    parent_id=entry.id,
+                    depth=depth + 1,
+                )
+                subfolder.name = entry.logical_name
+                folder.children.append(subfolder)
+                folder.size_bytes += subfolder.size_bytes
 
-            # Lister et trier le contenu
-            entries = sorted(os.scandir(directory), key=lambda e: (not e.is_dir(), e.name.lower()))
-            existing_names = set()
-
-            for entry in entries:
-                entry_path = Path(entry.path)
-                if entry.is_dir():
-                    # Appel récursif avec profondeur +1
-                    folder.children.append(build_folder(entry_path, depth + 1))
-                else:
-                    true_name = file_utils.extract_true_name(entry.name)
-                    true_name = file_utils.get_unique_display_name(true_name, existing_names)
-                    existing_names.add(true_name)
-                    folder.children.append(
-                        FileModel(
-                            id=file_utils.generate_id_from_path(entry_path),
-                            name=true_name,
-                            saved_as=entry.name,
-                            created_at=datetime.fromtimestamp(entry_path.stat().st_ctime),
-                            modified_at=datetime.fromtimestamp(entry_path.stat().st_mtime),
-                            size_bytes=entry_path.stat().st_size,
-                            mimeType=file_utils.detect_mimetype(entry_path),
-                        )
-                    )
-            return folder
-
-        return build_folder(target_dir, depth=0)
-
-    async def delete_path(self, item_id: str) -> str:
-        path = await file_utils.find_path_by_id(item_id, self.upload_dir)
-        if not path:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}")
-        try:
-            if path.is_file():
-                os.remove(path)
             else:
-                shutil.rmtree(path)
-            return f"L'objet a été supprimé avec succès"
-        except PermissionError:
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour supprimer l'objet {item_id}")
-        except FileNotFoundError:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=f"L'objet {item_id} n'existe plus")
-        except Exception as e:
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la suppression : {e}")
-        
-    async def delete_user_dir(self, user: UserOut) -> str:
-        folder = f"{user.id}_{user.firstname[0].lower()}{user.lastname.lower()}"
-        user_dir = self.upload_dir / "users" / folder
+                file_model = FileModel(
+                    id=str(entry.id),
+                    name=entry.logical_name,
+                    saved_as=entry.hash,
+                    created_at=entry.created_at,
+                    modified_at=entry.updated_at,
+                    size_bytes=entry.size_bytes,
+                    mimeType=entry.mime_type,
+                    user_id= entry.user_id
+                )
+                folder.children.append(file_model)
+                folder.size_bytes += entry.size_bytes or 0
 
-        if not user_dir.exists():
-             return f"Dossier utilisateur {user.id} introuvable"
-        try:
-            shutil.rmtree(user_dir)
-            return f"Dossier de l'utilisateur supprimé avec succès"
-        except PermissionError:
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour supprimer le dossier de l'utilisateur {user.id}")
-        except Exception as e:
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la suppression du dossier : {e}")
+        return folder
 
-    async def rename_path(self, item_id: str, new_name: str) -> str:
-        path = await file_utils.find_path_by_id(item_id, self.upload_dir)
-        if not path:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Aucun fichier ou dossier trouvé pour l'ID {item_id}")
-        new_path = path.parent / new_name
-        try:
-            os.rename(path, new_path)
-            return f"L'objet a été renommé avec succès"
-        except FileExistsError:
-            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=f"Un fichier ou dossier portant le nom {new_name} existe déjà")
-        except PermissionError:
-            raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail=f"Permission refusée pour renommer l'objet {item_id}")
-        except Exception as e:
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Erreur lors du renommage : {e}")
+
+    # ------------------------
+    # Suppression soft → corbeille (récursive)
+    # ------------------------
+    async def delete_path(self, item_id: uuid.UUID, db: AsyncSession) -> str:
+        file = await FileDAO.get_file(db, item_id)
+
+        async def _delete_recursive(f: File):
+            if f.is_directory:
+                # Lister les enfants (tous)
+                children = await FileDAO.list_children(db, f.user_id, str(f.id))
+                for child in children:
+                    await _delete_recursive(child)
+            else:
+                # Déplacer le fichier vers la corbeille
+                physical_path = self._compute_physical_path(f.hash)
+                if physical_path.exists():
+                    trash_path = self.trash_root / physical_path.name
+                    trash_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(physical_path), trash_path)
+
+            # Marquer comme supprimé
+            f.status = "deleted"
+            f.updated_at = datetime.now()
+            await db.flush()
+
+        await _delete_recursive(file)
+        await FileDAO.commit(db)
+        return "Objet supprimé avec succès"
+
+    # ------------------------
+    # Réactivation manuelle → recovery
+    # ------------------------
+    async def reactivate_file(self, file_id: uuid.UUID, db: AsyncSession) -> str:
+        file = await FileDAO.get_file(db, file_id)
+        if file.status != "deleted":
+            raise HTTPException(HTTPStatus.BAD_REQUEST, "Fichier déjà actif")
+
+        # Déplacer le fichier depuis corbeille vers recovery
+        trash_path = self.trash_root / file.hash
+        recovery_path = self.recovery_root / file.hash
+        recovery_path.parent.mkdir(parents=True, exist_ok=True)
+        if trash_path.exists():
+            shutil.move(str(trash_path), recovery_path)
+
+        file.status = "active"
+        await FileDAO.commit(db)
+        return "Fichier réactivé dans recovery"
+
+    # ------------------------
+    # Rename
+    # ------------------------
+    async def rename_path(self, item_id: uuid.UUID, new_name: str, db: AsyncSession) -> str:
+        file = await FileDAO.get_file(db, item_id)
+        await FileDAO.rename(db, file, new_name)
+        await FileDAO.commit(db)
+        return "Objet renommé avec succès"
+
+    # ------------------------
+    # Cleanup hard delete
+    # ------------------------
+    async def cleanup_deleted_files(self, db: AsyncSession):
+        files = await FileDAO.get_deleted_files(db)
+        for f in files:
+            trash_path = self.trash_root / f.hash
+            if trash_path.exists():
+                trash_path.unlink()
+            await FileDAO.hard_delete(db, f)

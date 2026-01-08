@@ -1,10 +1,9 @@
 import subprocess
 import sys
 import json
-import pkg_resources
 from typing import Dict, List
 from functools import lru_cache
-
+from importlib.metadata import distributions
 from app.core.config import Settings, get_settings
 from app.schemas.module_schema import ClaspyModule
 
@@ -60,21 +59,21 @@ class ModulesService:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def list_claspy_modules() -> List[ClaspyModule]:
+    def list_claspy_modules() -> List["ClaspyModule"]:
         """Liste tous les modules cLASpy et leur état"""
         plugins_metadata = ModulesService._read_plugins_json()
 
-        working_set = pkg_resources.WorkingSet()
+        # Liste des packages installés
         installed_plugins = {
-            dist.project_name.lower(): dist.version
-            for dist in working_set
+            dist.metadata['Name'].lower(): dist.version
+            for dist in distributions()
         }
 
         return [
             ClaspyModule(
                 name=plugin["name"],
-                version=installed_plugins.get(plugin["name"].replace("_", "-").lower()),
-                enable=plugin["name"].replace("_", "-").lower() in installed_plugins,
+                version=installed_plugins.get(plugin["name"].lower()),
+                enable=plugin["name"].lower() in installed_plugins,
                 description=plugin.get("description"),
                 tooltip=plugin.get("tooltip"),
             )

@@ -16,9 +16,8 @@ class UserService(IUserService):
     """
     Service de gestion des utilisateurs.
     """
-    def __init__(self, file_service: IFileService | None = None):
+    def __init__(self):
         self.userDAO: IUserDAO = DAOProvider.get_user_dao()
-        self.file_service = file_service
 
     # --- CREATE ---
     async def create_user(self, user_data: UserIn, db: AsyncSession) -> UserOut:
@@ -36,13 +35,6 @@ class UserService(IUserService):
             updated_at=datetime.now(),
         )
         created_user = await self.userDAO.create(user, db)
-
-        if created_user:
-            try:
-                await self.file_service._get_user_dir(created_user.id, db)
-            except Exception as e:
-                await db.rollback()
-                raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Une erreur est survenue : {e}")
 
         return UserOut.model_validate(created_user)
 
@@ -111,11 +103,7 @@ class UserService(IUserService):
         """
         try:
             user = await self.get_user_by_id(user_id, db)
-            result = await self.userDAO.delete(user.id, db)
-
-            if result:
-                await self.file_service.delete_user_dir(user)
-
+            await self.userDAO.delete(user.id, db)
             await db.commit()
             return f"Utilisateur supprimé avec succès."
 

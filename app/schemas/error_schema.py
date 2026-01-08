@@ -37,6 +37,7 @@ class ErrorResponse(ApiResponse[dict]):
         )
         jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
         jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
+        return jsonResponse
     
     @staticmethod
     def validation_exception_handler(request: Request, exc: RequestValidationError):

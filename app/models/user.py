@@ -19,9 +19,5 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
 
-
-    team = relationship("ProjectTeam", back_populates="user", overlaps="projects")
-    projects = relationship("Project", secondary="project_team", back_populates="members", overlaps="team")
-
     def __repr__(self):
         return f"<User(id={self.id}, firstname='{self.firstname}', lastname='{self.lastname}', role_id={self.role_id})>"
