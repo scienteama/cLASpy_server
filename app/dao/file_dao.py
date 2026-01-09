@@ -41,6 +41,26 @@ class FileDAO:
         return result.scalars().all()
 
     @staticmethod
+    async def list_ch(db: AsyncSession, user_id: int, role_id: int, parent_id: str | None = None):
+        """
+        Retourne tous les enfants (fichiers et dossiers) actifs d'un parent.
+        Si l'utilisateur est admin (role_id == 1), retourne tous les fichiers du parent,
+        sinon seulement ceux appartenant à user_id.
+        """
+        stmt = select(File).where(
+            File.parent_id == parent_id,
+            File.status == "active"
+        )
+
+        if role_id != 1:
+            stmt = stmt.where(File.user_id == user_id)
+
+        stmt = stmt.order_by(File.is_directory.desc(), File.logical_name)
+
+        result = await db.execute(stmt)
+        return result.scalars().all()
+
+    @staticmethod
     async def get_file(db: AsyncSession, file_id: str):
         """
         Récupère un fichier ou dossier actif par son ID.

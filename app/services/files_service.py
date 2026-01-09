@@ -5,6 +5,7 @@ import hashlib
 from datetime import datetime
 from fastapi import UploadFile, HTTPException
 from http import HTTPStatus
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dao.file_dao import FileDAO
@@ -142,6 +143,7 @@ class FileService(IFileService):
             modified_at=db_file.updated_at,
             size_bytes=db_file.size_bytes,
             mimeType=db_file.mime_type,
+            user_id=db_file.user_id
         )
 
     # ------------------------
@@ -162,8 +164,14 @@ class FileService(IFileService):
         await FileDAO.commit(db)
         return f"Dossier '{name}' créé avec succès"
 
-    async def list_directory(self, user_id: int, role_id: int, db: AsyncSession,
-                             parent_id: uuid.UUID | None = None, depth: int = 0) -> FolderModel:
+    async def list_directory(
+        self,
+        user_id: int,
+        role_id: int,
+        db: AsyncSession,
+        parent_id: uuid.UUID | None = None,
+        depth: int = 0
+    ) -> FolderModel:
 
         entries = await FileDAO.list_children(db, user_id, role_id, parent_id)
 
@@ -175,7 +183,7 @@ class FileService(IFileService):
             modified_at=datetime.now(),
             children=[],
             size_bytes=0,
-            user_id=user_id
+            user_id=user_id if parent_id is None else None
         )
 
         for entry in entries:
@@ -187,6 +195,8 @@ class FileService(IFileService):
                     parent_id=entry.id,
                     depth=depth + 1,
                 )
+
+                subfolder.user_id = entry.user_id
                 subfolder.name = entry.logical_name
                 folder.children.append(subfolder)
                 folder.size_bytes += subfolder.size_bytes
@@ -204,6 +214,9 @@ class FileService(IFileService):
                 )
                 folder.children.append(file_model)
                 folder.size_bytes += entry.size_bytes or 0
+
+        if parent_id is not None:
+            folder.user_id = (entries[0].user_id if entries else user_id)
 
         return folder
 
@@ -275,3 +288,29 @@ class FileService(IFileService):
             if trash_path.exists():
                 trash_path.unlink()
             await FileDAO.hard_delete(db, f)
+
+    # ------------------------
+    # Download file
+    # ------------------------
+    async def download_file(self, item_id: uuid.UUID, db: AsyncSession) -> FileResponse:
+        """
+        Télécharge un fichier simple
+        """
+        file = await FileDAO.get_file(db, item_id)
+
+        if not file or file.status != "active":
+            raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier introuvable")
+
+        if file.is_directory:
+            raise HTTPException(HTTPStatus.BAD_REQUEST, "Les dossiers ne sont pas supportés ici")
+
+        physical_path = self._compute_physical_path(file.hash)
+
+        if not physical_path.exists():
+            raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier physique introuvable")
+
+        return FileResponse(
+            path=physical_path,
+            filename=file.logical_name,
+            media_type=file.mime_type or "application/octet-stream",
+        )

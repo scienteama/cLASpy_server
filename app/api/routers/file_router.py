@@ -1,6 +1,8 @@
+from http import HTTPStatus
 from typing import Annotated
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Body, Query
 from fastapi.params import Form
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -31,6 +33,32 @@ async def upload_file(
     user_id = int(req.state.user.id)
     res = await file_service.save_file(file, user_id, db, parent_id=parent_id)
     return ApiResponse[FileModel](data=res)
+
+
+# ------------------------
+# Download file
+# ------------------------
+
+
+@router.get("/download-file/{item_id}", response_class=FileResponse)
+async def download_file(
+    item_id: UUID,
+    file_service: Annotated[IFileService, Depends(lambda: ServiceProvider.get_file_service())],
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Télécharger un fichier.
+    """
+    try:
+        return await file_service.download_file(item_id, db)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors du téléchargement: {str(e)}"
+        )
+
 
 # ------------------------
 # List directory

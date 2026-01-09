@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Protocol, Optional
+from typing import Protocol
+import uuid
 from fastapi import UploadFile
-from app.models.user import User
+from fastapi.responses import FileResponse
 from app.schemas.file_schema import FileModel, FolderModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import UserOut
@@ -38,5 +39,11 @@ class IFileService(Protocol):
         """
         Retourne le path du dossier de l'utilisateur
         Crée le dossier si nécessaire.
+        """
+        ...
+
+    async def download_file(self, item_id: uuid.UUID, db: AsyncSession) -> FileResponse:
+        """
+        Télécharge un fichier.
         """
         ...

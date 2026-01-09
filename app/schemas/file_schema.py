@@ -12,7 +12,7 @@ class FileModel(BaseModel):
     modified_at: datetime
     saved_as: Optional[str] = None
     mimeType: Optional[str] = None
-    user_id: int
+    user_id: Optional[int] = None
 
 
 class FolderModel(BaseModel):
@@ -23,7 +23,7 @@ class FolderModel(BaseModel):
     created_at: datetime
     modified_at: datetime
     depth: int
-    user_id: int
+    user_id: Optional[int] = None
     children: List[Union["FileModel", "FolderModel"]] = Field(default_factory=list)
 
 
