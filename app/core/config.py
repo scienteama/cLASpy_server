@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "data/storage"
     TRASH_DIR: str = "data/storage/trash"
     RECOVERY_DIR: str = "data/storage/recovery"
+    DEFAULT_OUTPUT_DIR: str = "data/storage/outputs"
 
     model_config = {
         "env_file": ".env",

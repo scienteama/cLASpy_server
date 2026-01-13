@@ -1,4 +1,6 @@
+from pathlib import Path
 from typing import List, Optional, Dict
+from fastapi import UploadFile
 
 
 class IClaspyMLService:
@@ -13,4 +15,10 @@ class IClaspyMLService:
 
     def get_algorithm_parameters(self, name: str) -> Optional[Dict[str, dict]]:
         """Retourne les paramètres enrichis d'un algorithme sklearn.ensemble spécifié par son nom."""
+        ...
+
+    async def load_data_file(self, file: UploadFile | None = None, fileInfos: dict | None = None) -> str:
+        """
+        Charge un fichier .las ou .csv et retourne les infos du nuage de points.
+        """
         ...

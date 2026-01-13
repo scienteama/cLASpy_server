@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
+import hashlib
 from app.database import Base
 
 
@@ -18,26 +19,34 @@ class File(Base):
     logical_name = Column(String, nullable=False)
     is_directory = Column(Boolean, default=False)
 
-    hash = Column(String(128), nullable=True)  # plus de unique ici
     mime_type = Column(String, nullable=True)
     size_bytes = Column(BigInteger, nullable=True)
+
     status = Column(String, default="active")  # active | deleted
 
     created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # ------------------------
-    # Index partiel pour unicité conditionnelle sur fichiers uniquement
+    # User-specific storage bucket
+    # ------------------------
+    storage_bucket = Column(
+        String(16),
+        nullable=False,
+        default=lambda context: hashlib.sha1(
+            str(context.get_current_parameters()['user_id']).encode()
+        ).hexdigest()[:8]
+    )
+
+    # ------------------------
+    # Unicity index for active entries only
     # ------------------------
     __table_args__ = (
         Index(
-            "ix_unique_active_file_per_user_folder",
-            "user_id",
-            "hash",
+            "ix_unique_active_entry_per_folder",
+            "parent_id",
             "logical_name",
             unique=True,
-            postgresql_where=(
-                (status == "active") & (is_directory == False)
-            ),
+            postgresql_where=(status == "active"),
         ),
     )

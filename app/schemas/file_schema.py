@@ -17,7 +17,7 @@ class FileModel(BaseModel):
 
 class FolderModel(BaseModel):
     id: str
-    name: str
+    name: Optional[str] = None
     type: str = "folder"
     size_bytes: int
     created_at: datetime

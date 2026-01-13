@@ -21,7 +21,12 @@ class FileDAO:
         await db.commit()
 
     @staticmethod
-    async def list_children(db: AsyncSession, user_id: int, role_id: int, parent_id: str | None = None):
+    async def list_children(
+        db: AsyncSession,
+        user_id: int,
+        role_id: int,
+        parent_id: uuid.UUID | None = None
+    ):
         """
         Retourne tous les enfants (fichiers et dossiers) actifs d'un parent.
         Si l'utilisateur est admin (role_id == 1), retourne tous les fichiers du parent,
@@ -144,3 +149,28 @@ class FileDAO:
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_active_file_by_parent_and_name(
+        db: AsyncSession,
+        logical_name: str,
+        user_id: int,
+        role_id: int,
+        parent_id: Optional[uuid.UUID] = None
+    ) -> Optional[File]:
+
+        stmt = select(File).where(
+            File.logical_name == logical_name,
+            File.status == "active"
+        )
+
+        if parent_id is None:
+            stmt = stmt.where(File.parent_id.is_(None))
+        else:
+            stmt = stmt.where(File.parent_id == parent_id)
+
+        if role_id != 1:  # not admin
+            stmt = stmt.where(File.user_id == user_id)
+
+        result = await db.execute(stmt)
+        return result.scalars().first()

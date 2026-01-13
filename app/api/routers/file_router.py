@@ -25,13 +25,14 @@ async def upload_file(
     file_service: Annotated[IFileService, Depends(lambda: ServiceProvider.get_file_service())],
     db: AsyncSession = Depends(get_async_db),
     file: UploadFile = File(...),
-    parent_id: UUID | None = Form(None),  # remplace sub_path
+    parent_id: UUID | None = Form(None),
 ):
     """
     Téléverse un fichier dans le dossier parent spécifié (parent_id).
     """
     user_id = int(req.state.user.id)
-    res = await file_service.save_file(file, user_id, db, parent_id=parent_id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.save_file(file, user_id, role_id, db, parent_id=parent_id)
     return ApiResponse[FileModel](data=res)
 
 
@@ -80,6 +81,7 @@ async def get_files(
     res = await file_service.list_directory(user_id, role_id, db, parent_id=parent_id)
     return ApiResponse[FolderModel](data=res)
 
+
 # ------------------------
 # Remove file / folder
 # ------------------------
@@ -87,6 +89,7 @@ async def get_files(
 
 @router.delete("/remove/{item_id}", response_model=ApiResponse[str])
 async def remove_file_or_folder(
+    req: Request,
     item_id: UUID,
     file_service: Annotated[IFileService, Depends(lambda: ServiceProvider.get_file_service())],
     db: AsyncSession = Depends(get_async_db),
@@ -94,16 +97,19 @@ async def remove_file_or_folder(
     """
     Supprime un fichier ou un dossier à partir de son ID (soft delete).
     """
-    res = await file_service.delete_path(item_id, db)
+    user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.delete_path(user_id, role_id, item_id, db)
     return ApiResponse[str](data=res)
+
 
 # ------------------------
 # Rename file / folder
 # ------------------------
 
-
 @router.put("/rename/{item_id}", response_model=ApiResponse[str])
 async def rename_file_or_folder(
+    req: Request,
     item_id: UUID,
     file_service: Annotated[IFileService, Depends(lambda: ServiceProvider.get_file_service())],
     db: AsyncSession = Depends(get_async_db),
@@ -112,13 +118,15 @@ async def rename_file_or_folder(
     """
     Renomme un fichier ou un dossier à partir de son ID.
     """
-    res = await file_service.rename_path(item_id, new_name, db)
+    user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.rename_path(item_id, user_id, role_id, new_name, db)
     return ApiResponse[str](data=res)
+
 
 # ------------------------
 # Create directory
 # ------------------------
-
 
 @router.post("/create-directory", response_model=ApiResponse[str])
 async def create_directory(
@@ -132,5 +140,6 @@ async def create_directory(
     Crée un nouveau dossier dans le dossier parent spécifié.
     """
     user_id = int(req.state.user.id)
-    res = await file_service.create_directory(user_id, name, db, parent_id=parent_id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.create_directory(user_id, role_id, name, db, parent_id=parent_id)
     return ApiResponse[str](data=res)
