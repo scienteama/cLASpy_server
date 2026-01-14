@@ -43,6 +43,10 @@ class Settings(BaseSettings):
             return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
         return "sqlite+aiosqlite:///./dev.db"
 
+    def get_public_settings(self) -> dict:
+        """Retourne les paramètres publics, excluant les champs sensibles."""
+        return self.model_dump(exclude={'db_user', 'db_password', 'db_port', 'db_host', 'db_name', 'SECRET_KEY', 'ALGORITHM'})
+
 
 @lru_cache()
 def get_settings() -> Settings:

@@ -22,3 +22,6 @@ class IClaspyMLService:
         Charge un fichier .las ou .csv et retourne les infos du nuage de points.
         """
         ...
+    
+    async def load_data_file_stream(self, file, fileInfos):
+        ...

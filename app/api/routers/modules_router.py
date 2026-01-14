@@ -23,7 +23,6 @@ def unload_claspy_plugin(plugin_name: str, module_service: Annotated[IModuleServ
 
 
 @router.get("/list/claspy-modules", response_model=ApiResponse[List[ClaspyModule]])
-def get_i_claspy_modules(module_service: Annotated[IModuleService,
-                         Depends(lambda: ServiceProvider.get_module_service())]):
+def get_i_claspy_modules(module_service: Annotated[IModuleService, Depends(lambda: ServiceProvider.get_module_service())]):
     claspy_modules = module_service.list_claspy_modules()
     return ApiResponse[List[ClaspyModule]](data=claspy_modules)

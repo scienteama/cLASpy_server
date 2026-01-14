@@ -1,8 +1,10 @@
+import asyncio
 from pathlib import Path
 from typing import Annotated, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.params import Form
 from app.core.service_provider import ServiceProvider
+from app.dao.file_dao import FileDAO
 from app.database import get_async_db
 from app.schemas.response_schema import ApiResponse
 from app.schemas.sklearn_schema import AlgoParam, AlgoParamsResponse
@@ -49,7 +51,10 @@ async def load_data_file(
     Charge un fichier de données (.las ou .csv) et retourne des informations sur le nuage de points.
     """
     user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
     fileInfos: dict | None = None
+
+    print(f"keepOnServer: {keepOnServer}, folderId: {folderId}")
 
     # Sauvegarde le fichier sur le serveur si keepOnServer=True
     if keepOnServer:
@@ -57,12 +62,49 @@ async def load_data_file(
             parent_id = None
         else:
             parent_id = folderId
-        res = await file_service.save_file(file, user_id, db, parent_id)
+        res = await file_service.save_file(file, user_id, role_id, db, parent_id)
+        
+        _file = await FileDAO.get_file(db, res.id)
+
         fileInfos = {
-            "full_path": await file_service.compute_physical_path_async(db, res.saved_as, file_service.storage_root),
+            "full_path": await file_service.compute_physical_path_async(db, _file, file_service.storage_root),
             "name": res.name
         }
 
-    infos = await claspyML_service.load_data_file(file, fileInfos)
+    stdout = await claspyML_service.load_data_file(file, fileInfos)
 
-    return ApiResponse[str](data=infos)
+    return ApiResponse[str](data=stdout)
+
+# from fastapi.responses import StreamingResponse
+# @router.post("/load-data")
+# async def load_data_file_stream(
+#     req: Request,
+#     claspyML_service: Annotated[IClaspyMLService, Depends(lambda: ServiceProvider.get_claspyml_service())],
+#     file_service: Annotated[IFileService, Depends(lambda: ServiceProvider.get_file_service())],
+#     db: AsyncSession = Depends(get_async_db),
+#     file: UploadFile = File(...),
+#     keepOnServer: bool = Form(...),
+#     folderId: str = Form(...)
+# ):
+#     user_id = int(req.state.user.id)
+#     role_id = int(req.state.user.role_id)
+#     fileInfos: dict | None = None
+
+#     # Sauvegarde sur le serveur si demandé
+#     if keepOnServer:
+#         parent_id = None if folderId.lower() == "root" else folderId
+#         res = await file_service.save_file(file, user_id, role_id, db, parent_id)
+#         _file = await FileDAO.get_file(db, res.id)
+#         fileInfos = {
+#             "full_path": await file_service.compute_physical_path_async(db, _file, file_service.storage_root),
+#             "name": res.name
+#         }
+
+#     # Generator pour streamer la sortie de ML
+#     async def stream():
+#         async for line in claspyML_service.load_data_file_stream(file, fileInfos):
+#             yield f"data: {line}\n\n"
+#             await asyncio.sleep(0)  # permet à l'event loop de respirer
+
+#     return StreamingResponse(stream(), media_type="text/event-stream")
+

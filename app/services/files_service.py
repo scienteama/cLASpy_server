@@ -39,8 +39,7 @@ class FileService(IFileService):
     # ------------------------
     async def compute_physical_path_async(self, db: AsyncSession, file: File, storage_root: Path) -> Path:
         """
-        Retourne le chemin physique complet du fichier ou dossier, basé sur storage_bucket
-        et arborescence logique. Fonctionne entièrement en async, sans lazy load sync.
+        Retourne le chemin physique complet du fichier ou dossier
         """
         parts = [file.logical_name]
         parent_id = file.parent_id
@@ -112,7 +111,6 @@ class FileService(IFileService):
         return FileModel(
             id=str(db_file.id),
             name=db_file.logical_name,
-            saved_as=db_file.logical_name,
             created_at=db_file.created_at,
             modified_at=db_file.updated_at,
             size_bytes=db_file.size_bytes,
@@ -189,7 +187,6 @@ class FileService(IFileService):
                 file_model = FileModel(
                     id=str(entry.id),
                     name=entry.logical_name,
-                    saved_as=entry.logical_name,
                     created_at=entry.created_at,
                     modified_at=entry.updated_at,
                     size_bytes=entry.size_bytes,

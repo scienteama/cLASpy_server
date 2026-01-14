@@ -1,9 +1,11 @@
 from app.dao.user_dao import UserDAO
 from app.services.auth_service import AuthService
 from app.services.claspy_ml_service import ClaspyMLService
+from app.services.config_service import ConfigService
 from app.services.files_service import FileService
 from app.services.interfaces.auth_interface import IAuthService
 from app.services.interfaces.claspyml_interface import IClaspyMLService
+from app.services.interfaces.config_interface import IConfigService
 from app.services.interfaces.files_interface import IFileService
 from app.services.interfaces.module_interface import IModuleService
 from app.services.interfaces.user_interface import IUserService
@@ -20,13 +22,13 @@ class ServiceProvider:
     _file_service: IFileService | None = None
     _module_service: IModuleService | None = None
     _claspyml_service: IClaspyMLService | None = None
+    _config_service: IConfigService | None = None
 
     @classmethod
     def init_services(cls):
         """
         Initialise les singletons dans le bon ordre.
         """
-
         cls._user_service = UserService()
 
         # Dépendances
@@ -36,6 +38,7 @@ class ServiceProvider:
         # Services indépendants
         cls._module_service = ModulesService()
         cls._claspyml_service = ClaspyMLService()
+        cls._config_service = ConfigService()
 
     @classmethod
     def get_user_service(cls) -> IUserService:
@@ -66,3 +69,9 @@ class ServiceProvider:
         if cls._claspyml_service is None:
             cls._claspyml_service = ClaspyMLService()
         return cls._claspyml_service
+    
+    @classmethod
+    def get_config_service(cls) -> IConfigService:
+        if cls._config_service is None:
+            cls._config_service = ConfigService()
+        return cls._config_service

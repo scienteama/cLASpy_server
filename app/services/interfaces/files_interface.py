@@ -1,12 +1,13 @@
 from pathlib import Path
 from typing import Protocol
 import uuid
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from app.schemas.file_schema import FileModel, FolderModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user_schema import UserOut
 from app.services.interfaces.user_interface import IUserService
+from app.models.file import File
 
 
 class IFileService(Protocol):

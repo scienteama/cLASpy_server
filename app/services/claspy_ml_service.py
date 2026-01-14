@@ -1,10 +1,13 @@
+from contextlib import redirect_stderr, redirect_stdout
 from http import HTTPStatus
 import inspect
+import io
 import os
 from pathlib import Path
 import tempfile
 from typing import Any, List, Optional, Dict
 from fastapi import HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
 from app.schemas.sklearn_schema import TrainArguments
@@ -123,15 +126,8 @@ class ClaspyMLService:
                 algo="rf",
             )
 
-            # claspy_trainer = self.trainer(str(path))
-            # claspy_trainer.data_type = suf
-            # claspy_trainer.folder_path = str(path.parent)
-            # claspy_trainer.config = None
-            # claspy_trainer.input_data = str(path)
-            # claspy_trainer.output = str(path.parent)
-
-            self.claspy_t.train(trainArgs)
-            return "train done"
+            result = await run_in_threadpool(self._train_capture_sync, trainArgs)
+            return result["stdout"]
 
         # Cas 2 : UploadFile temporaire
         assert file is not None
@@ -142,8 +138,48 @@ class ClaspyMLService:
             tmp_path = tmp.name
 
         try:
-            claspy_trainer = self.trainer(tmp_path)
-            claspy_trainer.folder_path = self.config.DEFAULT_OUTPUT_DIR
-            return claspy_trainer.introduction()
+
+            trainArgs = TrainArguments(
+                input_data=str(tmp_path),
+                output=str(self.config.DEFAULT_OUTPUT_DIR),
+                algo="rf",
+            )
+            result = await run_in_threadpool(self._run_capture_sync, "train", trainArgs)
+            return result["stdout"]
         finally:
             os.remove(tmp_path)
+
+
+    def _run_capture_sync(self, func_name: str, args: Any = None) -> dict[str, str]:
+        """
+        Exécute de manière synchrone une méthode et capture stdout/stderr.
+        """
+        stdout_buffer = io.StringIO()
+        stderr_buffer = io.StringIO()
+
+        func = getattr(self.claspy_t, func_name)
+
+        if not callable(func):
+            raise ValueError(f"{func_name} n'est pas une méthode exécutable.")
+
+        with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+            if args is not None:
+                func(args)
+            else:
+                func()
+
+        return {
+            "stdout": stdout_buffer.getvalue(),
+            "stderr": stderr_buffer.getvalue(),
+        }
+    
+    async def load_data_file_stream(self, file, fileInfos):
+        """
+        Retourne un async generator ligne par ligne pour streamer stdout.
+        """
+        # Récupère le résultat complet de façon asynchrone dans un threadpool si besoin
+        stdout = await self.load_data_file(file, fileInfos)  # load_data_file est async
+
+        # Generator async pour renvoyer ligne par ligne
+        for line in stdout.splitlines():
+            yield line

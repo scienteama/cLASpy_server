@@ -13,6 +13,7 @@ from app.api.routers.file_router import router as file_router
 from app.api.routers.modules_router import router as modules_router
 from app.api.routers.claspy_ml_router import router as claspy_ml_router
 from app.api.routers.auth_router import router as auth_router
+from app.api.routers.config_router import router as config_router
 from app.schemas.error_schema import ErrorResponse
 
 # Lifespan pour FastAPI
@@ -47,6 +48,7 @@ app.add_middleware(UtilsMiddleware)
 # Enregistrement des routes
 registry = RouterRegistry()
 registry.register(auth_router, prefix="/api/auth", tags=["Authentification"])
+registry.register(config_router, prefix="/api/settings", tags=["Settings"])
 registry.register(modules_router, prefix="/api/modules", tags=["Modules"])
 registry.register(users_router, prefix="/api/users", tags=["Users"])
 registry.register(file_router, prefix="/api/files", tags=["Files"])
