@@ -11,8 +11,10 @@ from app.services.modules_service import ModulesService
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.config_service import ConfigService
 
-# DAO PROVIDERS
 
+# ------------------------------------------------------------------
+# DAO PROVIDERS
+# ------------------------------------------------------------------
 
 def get_user_dao(
     db: Annotated[AsyncSession, Depends(get_async_db)],
@@ -25,7 +27,9 @@ def get_file_dao(
 ) -> FileDAO:
     return FileDAO(db)
 
-# SERVICE PROVIDERS WITH DAO
+# ------------------------------------------------------------------
+# DEPENDENCIES SERVICES
+# ------------------------------------------------------------------
 
 
 def get_user_service(
@@ -46,20 +50,23 @@ def get_file_service(
 ) -> FileService:
     return FileService(user_service, file_dao)
 
-# SERVICE PROVIDERS WITHOUT DAO
+
+def get_claspyml_service(
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> ClaspyMLService:
+    return ClaspyMLService(file_service)
+
+# ------------------------------------------------------------------
+# NO DEPENDENCIES SERVICES
+# ------------------------------------------------------------------
 
 
 _module_service = ModulesService()
-_claspyml_service = ClaspyMLService()
 _config_service = ConfigService()
 
 
 def get_module_service() -> ModulesService:
     return _module_service
-
-
-def get_claspyml_service() -> ClaspyMLService:
-    return _claspyml_service
 
 
 def get_config_service() -> ConfigService:

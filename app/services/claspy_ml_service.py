@@ -1,18 +1,12 @@
-from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
-from http import HTTPStatus
 import inspect
-import io
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, List, Optional, Dict
-import uuid
-from fastapi import HTTPException, UploadFile
-from fastapi.concurrency import run_in_threadpool
-
+from typing import List, Optional, Dict
+from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
-from app.schemas.sklearn_schema import TrainArguments
+from app.services.files_service import FileService
 
 try:
     from cLASpy_ML import cLASpy_Classes
@@ -32,7 +26,7 @@ class ClaspyMLService:
     TODO : Renseigner la doc.
     """
 
-    def __init__(self):
+    def __init__(self, file_service: FileService):
         if ClaspyTrainer is not None:
             self.core_version = cLASpy_Core_version
             self.claspy_classes = cLASpy_Classes
@@ -43,6 +37,7 @@ class ClaspyMLService:
             self.claspy_t_version = cLASpy_T.cLASpy_T_version
             self.claspy_t = cLASpy_T
 
+        self.file_service = file_service
         self.config: Settings = get_settings()
 
     def get_core_version(self) -> str:
@@ -84,74 +79,77 @@ class ClaspyMLService:
 
         # Retourne les paramètres enrichis
         return enrich_algorithm_params(self.trainer)
-    
 
-    async def process_file(self, file: UploadFile | None = None, fileInfos: dict | None = None,) -> dict:
+    async def process_file(self, req: Request, keepOnServer: bool, folder_id: str,
+                           file: UploadFile | None = None) -> dict:
         """
         Charge un fichier .las ou .csv et retourne les infos du nuage de points.
         """
 
-        # Cas 1 : fichier déjà sur le serveur
-        if fileInfos:
-            path = Path(fileInfos["full_path"])
-            trainArgs = TrainArguments(
-                input_data=str(Path(fileInfos["full_path"])),
-                output=str(path.parent),
-                algo="rf",
+        user_id = int(req.state.user.id)
+        role_id = int(req.state.user.role_id)
+        physical_path = None
+
+        if keepOnServer:
+            parent_id: str | None = None if folder_id.lower() == "root" else folder_id
+            db_file = await self.file_service.save_file(file, user_id, role_id, parent_id)
+
+            physical_path = await self.file_service.compute_physical_path(
+                await self.file_service.get_file_by_id(db_file.id)
             )
-            result = await run_in_threadpool(self._train_capture_sync, trainArgs)
-            return result["stdout"]
 
-        # Cas 2 : fichier temporaire
-        assert file is not None
+            if not physical_path.exists():
+                raise HTTPException(
+                    status_code=500,
+                    detail="Le fichier n'a pas été correctement sauvegardé sur le serveur"
+                )
+
+        if physical_path:
+            return self.process_existing_file(physical_path)
+
+        assert file is not None, "Aucun fichier fourni"
+        return await self.process_temp_file(file)
+
+    def process_existing_file(self, physical_path: Path) -> dict:
+        """
+        Traitement d'un fichier déjà présent sur le serveur.
+        """
+        path = Path(physical_path)
+        return self.get_point_cloud_info(str(path), str(path.parent))
+
+    async def process_temp_file(self, file: UploadFile) -> dict:
+        """
+        Sauvegarde et traite un fichier temporairement.
+        """
         content = await file.read()
-
-        if file.filename:
-            ext = os.path.splitext(file.filename)[1].lower()
-
-        tempFolder = self.config.TEMP_DIR
-        os.makedirs(tempFolder, exist_ok=True)
-        suffix=f"_{file.filename}"
-
-        with tempfile.NamedTemporaryFile(delete=False, prefix="tmp_", suffix=suffix or None, dir=tempFolder) as tmp:
+        temp_folder = self.config.TEMP_DIR
+        os.makedirs(temp_folder, exist_ok=True)
+        suffix = f"_{file.filename}"
+        with tempfile.NamedTemporaryFile(
+            delete=False, prefix="tmp_", suffix=suffix, dir=temp_folder
+        ) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
-
         try:
-
             now = datetime.now()
             timestamp_str = now.strftime("%Y%m%d_%H%M%S")
             output_path = Path(self.config.DEFAULT_OUTPUT_DIR) / timestamp_str
-            
-            trainArgs = TrainArguments(
-                input_data=str(tmp_path),
-                output=str(output_path),
-                algo="rf",
-            )
-
-            self.trainer = ClaspyTrainer(trainArgs.input_data, output_data=trainArgs.output, algo=trainArgs.algo)
-
-            path_to_file = Path(tmp_path)
-            result = {
-                "claspy_msg": self.trainer.point_cloud_info(),
-                "details": f" Chargement du fichier : {file.filename} effectué avec succès.",
-                "path": f"{Path(*path_to_file.parts[-4:]).as_posix()}"
-            }
-
-            return result
-            # result = await run_in_threadpool(self._run_capture_sync, "train", trainArgs)
-            #return result["stdout"]
+            os.makedirs(output_path, exist_ok=True)
+            return self.get_point_cloud_info(str(tmp_path), str(output_path))
         finally:
-            print('temp_path :', tmp_path)
-            #os.remove(tmp_path)
+            os.remove(tmp_path)
 
-    async def load_data_file_stream(self, file, fileInfos):
-        """
-        Retourne un async generator ligne par ligne pour streamer stdout.
-        """
-        # Récupère le résultat complet de façon asynchrone dans un threadpool si besoin
-        stdout = await self.load_data_file(file, fileInfos)  # load_data_file est async
+    def get_point_cloud_info(self, input_path: str, output_path: str) -> dict:
+        if self.trainer is None:
+            raise ModuleNotFoundError("Module ClaspyTrainer non chargé.")
 
-        # Generator async pour renvoyer ligne par ligne
-        for line in stdout.splitlines():
-            yield line
+        self.trainer = ClaspyTrainer(input_data=input_path, output_data=output_path)
+
+        path_to_file = Path(input_path)
+        filename = path_to_file.name
+
+        return {
+            "claspy_msg": self.trainer.point_cloud_info(),
+            "details": f"Chargement du fichier : {filename} effectué avec succès.",
+            "path": f"{Path(*path_to_file.parts[-4:]).as_posix()}"
+        }

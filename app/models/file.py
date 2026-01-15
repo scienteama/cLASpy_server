@@ -22,7 +22,7 @@ class File(Base):
     mime_type = Column(String, nullable=True)
     size_bytes = Column(BigInteger, nullable=True)
 
-    status = Column(String, default="active")  # active | deleted
+    status = Column(String, default="active")  # active | deleted | missing
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
