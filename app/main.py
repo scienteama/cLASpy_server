@@ -6,13 +6,12 @@ from app.api.middlewares.utils_middleware import UtilsMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.registry import RouterRegistry
-from app.core.service_provider import ServiceProvider
 from app.database import engine
+from app.api.routers.auth_router import router as auth_router
 from app.api.routers.users_router import router as users_router
 from app.api.routers.file_router import router as file_router
 from app.api.routers.modules_router import router as modules_router
 from app.api.routers.claspy_ml_router import router as claspy_ml_router
-from app.api.routers.auth_router import router as auth_router
 from app.api.routers.config_router import router as config_router
 from app.schemas.error_schema import ErrorResponse
 
@@ -59,8 +58,6 @@ registry.include_all(app)
 app.add_exception_handler(HTTPException, ErrorResponse.http_exception_handler)
 app.add_exception_handler(RequestValidationError, ErrorResponse.validation_exception_handler)
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
-
-ServiceProvider.init_services()
 
 if __name__ == "__main__":
     import uvicorn

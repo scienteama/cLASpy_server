@@ -1,4 +1,5 @@
 from contextlib import redirect_stderr, redirect_stdout
+from datetime import datetime
 from http import HTTPStatus
 import inspect
 import io
@@ -6,6 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 from typing import Any, List, Optional, Dict
+import uuid
 from fastapi import HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
@@ -82,97 +84,67 @@ class ClaspyMLService:
 
         # Retourne les paramètres enrichis
         return enrich_algorithm_params(self.trainer)
+    
 
-    async def load_data_file(self, file: UploadFile | None = None, fileInfos: dict | None = None,) -> str:
+    async def process_file(self, file: UploadFile | None = None, fileInfos: dict | None = None,) -> dict:
         """
         Charge un fichier .las ou .csv et retourne les infos du nuage de points.
         """
-        if self.trainer is None:
-            raise RuntimeError("cLASpy_Trainer non chargé")
-
-        ALLOWED_EXTENSIONS = {'.las', '.csv'}
-
-        # Détermine le path et l'extension
-        if fileInfos:
-            path = Path(fileInfos["full_path"])
-            if not path.exists():
-                raise HTTPException(
-                    status_code=HTTPStatus.NOT_FOUND,
-                    detail=f"Fichier introuvable : {fileInfos['name']}"
-                )
-            suf = os.path.splitext(fileInfos['name'])[1].lower()
-        elif file:
-            path = None
-            suf = os.path.splitext(file.filename)[1].lower()
-        else:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail="Aucun fichier fourni"
-            )
-
-        # Valide l'extension
-        if suf not in ALLOWED_EXTENSIONS:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Type de fichier non supporté : {suf}"
-            )
 
         # Cas 1 : fichier déjà sur le serveur
         if fileInfos:
-
+            path = Path(fileInfos["full_path"])
             trainArgs = TrainArguments(
-                input_data=str(path),
+                input_data=str(Path(fileInfos["full_path"])),
                 output=str(path.parent),
                 algo="rf",
             )
-
             result = await run_in_threadpool(self._train_capture_sync, trainArgs)
             return result["stdout"]
 
-        # Cas 2 : UploadFile temporaire
+        # Cas 2 : fichier temporaire
         assert file is not None
         content = await file.read()
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suf) as tmp:
+        if file.filename:
+            ext = os.path.splitext(file.filename)[1].lower()
+
+        tempFolder = self.config.TEMP_DIR
+        os.makedirs(tempFolder, exist_ok=True)
+        suffix=f"_{file.filename}"
+
+        with tempfile.NamedTemporaryFile(delete=False, prefix="tmp_", suffix=suffix or None, dir=tempFolder) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
 
         try:
 
+            now = datetime.now()
+            timestamp_str = now.strftime("%Y%m%d_%H%M%S")
+            output_path = Path(self.config.DEFAULT_OUTPUT_DIR) / timestamp_str
+            
             trainArgs = TrainArguments(
                 input_data=str(tmp_path),
-                output=str(self.config.DEFAULT_OUTPUT_DIR),
+                output=str(output_path),
                 algo="rf",
             )
-            result = await run_in_threadpool(self._run_capture_sync, "train", trainArgs)
-            return result["stdout"]
+
+            self.trainer = ClaspyTrainer(trainArgs.input_data, output_data=trainArgs.output, algo=trainArgs.algo)
+
+            path_to_file = Path(tmp_path)
+            result = {
+                "claspy_msg": self.trainer.point_cloud_info(),
+                "details": f" Chargement du fichier : {file.filename} effectué avec succès.",
+                "path": f"{Path(*path_to_file.parts[-4:]).as_posix()}"
+            }
+
+            return result
+            # result = await run_in_threadpool(self._run_capture_sync, "train", trainArgs)
+            #return result["stdout"]
         finally:
-            os.remove(tmp_path)
+            print('temp_path :', tmp_path)
+            #os.remove(tmp_path)
 
-
-    def _run_capture_sync(self, func_name: str, args: Any = None) -> dict[str, str]:
-        """
-        Exécute de manière synchrone une méthode et capture stdout/stderr.
-        """
-        stdout_buffer = io.StringIO()
-        stderr_buffer = io.StringIO()
-
-        func = getattr(self.claspy_t, func_name)
-
-        if not callable(func):
-            raise ValueError(f"{func_name} n'est pas une méthode exécutable.")
-
-        with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-            if args is not None:
-                func(args)
-            else:
-                func()
-
-        return {
-            "stdout": stdout_buffer.getvalue(),
-            "stderr": stderr_buffer.getvalue(),
-        }
-    
     async def load_data_file_stream(self, file, fileInfos):
         """
         Retourne un async generator ligne par ligne pour streamer stdout.

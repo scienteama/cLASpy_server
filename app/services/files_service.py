@@ -11,20 +11,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dao.file_dao import FileDAO
 from app.schemas.file_schema import FileModel, FolderModel
-from app.services.interfaces.files_interface import IFileService
-from app.services.interfaces.user_interface import IUserService
 from app.models.file import File
 from app.core.config import get_settings, Settings
-import functools
+from app.services.users_service import UserService
 
 
-class FileService(IFileService):
+class FileService:
     """
     Service de gestion des fichiers
     """
 
-    def __init__(self, user_service: IUserService):
+    def __init__(self, user_service: UserService, file_dao: FileDAO):
         self.user_service = user_service
+        self.file_dao = file_dao
         self.config: Settings = get_settings()
         self.storage_root = Path(self.config.UPLOAD_DIR)
         self.trash_root = Path(self.config.TRASH_DIR)
@@ -35,36 +34,14 @@ class FileService(IFileService):
             path.mkdir(parents=True, exist_ok=True)
 
     # ------------------------
-    # Utils
-    # ------------------------
-    async def compute_physical_path_async(self, db: AsyncSession, file: File, storage_root: Path) -> Path:
-        """
-        Retourne le chemin physique complet du fichier ou dossier
-        """
-        parts = [file.logical_name]
-        parent_id = file.parent_id
-
-        while parent_id:
-            stmt = select(File.logical_name, File.parent_id).where(File.id == parent_id)
-            result = await db.execute(stmt)
-            parent_record = result.first()
-            if not parent_record:
-                break
-            parent_name, parent_id = parent_record
-            parts.append(parent_name)
-
-        parts.reverse()
-        return storage_root / file.storage_bucket / Path(*parts)
-
-    # ------------------------
     # Upload / création fichier
     # ------------------------
+
     async def save_file(
         self,
         file: UploadFile,
         user_id: int,
         role_id: int,
-        db: AsyncSession,
         parent_id: uuid.UUID | None = None,
     ) -> FileModel:
 
@@ -79,7 +56,7 @@ class FileService(IFileService):
 
         parent_uuid = None if parent_id in [None, "root"] else uuid.UUID(str(parent_id))
 
-        existing_active = await FileDAO.get_active_file_by_parent_and_name(db, file.filename, user_id, role_id, parent_uuid)
+        existing_active = await self.file_dao.get_active_file_by_parent_and_name(file.filename, user_id, role_id, parent_uuid)
         if existing_active:
             print(existing_active.storage_bucket)
             await run_in_threadpool(lambda: temp_path.unlink())
@@ -101,10 +78,10 @@ class FileService(IFileService):
             storage_bucket=storage_bucket
         )
 
-        await FileDAO.add_file(db, db_file)
-        await FileDAO.commit(db)
+        await self.file_dao.add_file(db_file)
+        await self.file_dao.commit()
 
-        physical_path = await self.compute_physical_path_async(db, db_file, self.storage_root)
+        physical_path = await self.compute_physical_path(db_file, self.storage_root)
         await run_in_threadpool(lambda: physical_path.parent.mkdir(parents=True, exist_ok=True))
         await run_in_threadpool(lambda: shutil.move(str(temp_path), physical_path))
 
@@ -122,11 +99,11 @@ class FileService(IFileService):
     # Dossier
     # ------------------------
 
-    async def create_directory(self, user_id: int, role_id: int, name: str, db: AsyncSession,
+    async def create_directory(self, user_id: int, role_id: int, name: str,
                                parent_id: uuid.UUID | None = None) -> str:
         # Vérification unicité
-        existing_active = await FileDAO.get_active_file_by_parent_and_name(
-            db, name, user_id, role_id, parent_id
+        existing_active = await self.file_dao.get_active_file_by_parent_and_name(
+            name, user_id, role_id, parent_id
         )
         if existing_active:
             raise HTTPException(
@@ -144,20 +121,19 @@ class FileService(IFileService):
             status="active",
             storage_bucket=storage_bucket
         )
-        await FileDAO.add_file(db, folder)
-        await FileDAO.commit(db)
+        await self.file_dao.add_file(folder)
+        await self.file_dao.commit()
         return f"Dossier '{name}' créé avec succès"
 
     async def list_directory(
         self,
         user_id: int,
         role_id: int,
-        db: AsyncSession,
         parent_id: uuid.UUID | None = None,
         depth: int = 0
     ) -> FolderModel:
 
-        entries = await FileDAO.list_children(db, user_id, role_id, parent_id)
+        entries = await self.file_dao.list_children(user_id, role_id, parent_id)
 
         folder = FolderModel(
             id=str(parent_id) if parent_id else "root",
@@ -175,7 +151,6 @@ class FileService(IFileService):
                 subfolder = await self.list_directory(
                     user_id=user_id,
                     role_id=role_id,
-                    db=db,
                     parent_id=entry.id,
                     depth=depth + 1,
                 )
@@ -204,8 +179,8 @@ class FileService(IFileService):
     # ------------------------
     # Suppression soft
     # ------------------------
-    async def delete_path(self, user_id: int, role_id: int, item_id: uuid.UUID, db: AsyncSession) -> str:
-        root = await FileDAO.get_file(db, item_id)
+    async def delete_path(self, user_id: int, role_id: int, item_id: uuid.UUID) -> str:
+        root = await self.file_dao.get_file(item_id)
         if not root:
             raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Fichier introuvable")
 
@@ -220,62 +195,61 @@ class FileService(IFileService):
 
             if current.is_directory:
                 # ici il faut passer current.id, pas item_id
-                children = await FileDAO.list_children(db, user_id, role_id, parent_id=current.id)
+                children = await self.file_dao.list_children(user_id, role_id, parent_id=current.id)
                 stack.extend(children)
             else:
-                physical_path = await self.compute_physical_path_async(db, current, self.storage_root)
+                physical_path = await self.compute_physical_path(current, self.storage_root)
                 if physical_path.exists():
                     trash_path = self.trash_root / physical_path.relative_to(self.storage_root)
                     trash_path.parent.mkdir(parents=True, exist_ok=True)
                     await run_in_threadpool(lambda: shutil.move(str(physical_path), trash_path))
 
-
             current.status = "deleted"
             current.updated_at = datetime.now()
-            await db.flush()
+            await self.file_dao.flush()
 
-        await FileDAO.commit(db)
+        await self.file_dao.commit()
         return "Objet supprimé avec succès"
 
     # ------------------------
-    # Réactivation → recovery
+    # Réactivation → recovery  à tester
     # ------------------------
 
-    async def reactivate_file(self, file_id: uuid.UUID, db: AsyncSession) -> str:
-        file = await FileDAO.get_file(db, file_id)
+    async def reactivate_file(self, file_id: uuid.UUID) -> str:
+        file = await self.file_dao.get_file(file_id)
         if file.status != "deleted":
             raise HTTPException(HTTPStatus.BAD_REQUEST, "Fichier déjà actif")
 
-        trash_path = self.trash_root / await self.compute_physical_path_async(db, file, self.storage_root).relative_to(self.storage_root)
-        recovery_path = self.recovery_root / await self.compute_physical_path_async(db, file, self.storage_root).relative_to(self.storage_root)
+        trash_path = self.trash_root / await self.compute_physical_path(file, self.storage_root).relative_to(self.storage_root)
+        recovery_path = self.recovery_root / await self.compute_physical_path(file, self.storage_root).relative_to(self.storage_root)
         recovery_path.parent.mkdir(parents=True, exist_ok=True)
         if trash_path.exists():
             shutil.move(str(trash_path), recovery_path)
 
         file.status = "active"
         file.updated_at = datetime.now()
-        await FileDAO.commit(db)
+        await self.file_dao.commit()
         return "Fichier réactivé dans recovery"
 
     # ------------------------
     # Rename
     # ------------------------
-    async def rename_path(self, item_id: uuid.UUID, user_id: int, role_id: int, new_name: str, db: AsyncSession) -> str:
-        file = await FileDAO.get_file(db, item_id)
+    async def rename_path(self, item_id: uuid.UUID, user_id: int, role_id: int, new_name: str) -> str:
+        file = await self.file_dao.get_file(item_id)
 
-        # Vérification unicité 
-        existing = await FileDAO.get_active_file_by_parent_and_name(db, new_name, user_id, role_id, file.parent_id)
+        # Vérification unicité
+        existing = await self.file_dao.get_active_file_by_parent_and_name(new_name, user_id, role_id, file.parent_id)
         if existing and existing.id != file.id:
             raise HTTPException(HTTPStatus.CONFLICT, f"Un objet avec le nom '{new_name}' existe déjà")
 
-        old_physical_path = await self.compute_physical_path_async(db, file, self.storage_root)
+        old_physical_path = await self.compute_physical_path(file, self.storage_root)
         file.logical_name = new_name
         file.updated_at = datetime.now()
-        await db.flush()
-        await FileDAO.commit(db)
+        await self.file_dao.flush()
+        await self.file_dao.commit()
 
         # Renommer physiquement
-        new_physical_path = await self.compute_physical_path_async(db, file, self.storage_root)
+        new_physical_path = await self.compute_physical_path(file, self.storage_root)
         if old_physical_path.exists():
             new_physical_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(old_physical_path), new_physical_path)
@@ -285,25 +259,25 @@ class FileService(IFileService):
     # ------------------------
     # Cleanup hard delete
     # ------------------------
-    async def cleanup_deleted_files(self, db: AsyncSession):
-        files = await FileDAO.get_deleted_files(db)
+    async def cleanup_deleted_files(self):
+        files = await self.file_dao.get_deleted_files()
         for f in files:
-            physical_path = await self.compute_physical_path_async(db, f, self.storage_root)
+            physical_path = await self.compute_physical_path(f, self.storage_root)
             if physical_path.exists():
                 physical_path.unlink()
-            await FileDAO.hard_delete(db, f)
+            await self.file_dao.hard_delete(f)
 
     # ------------------------
     # Download file
     # ------------------------
-    async def download_file(self, item_id: uuid.UUID, db: AsyncSession) -> FileResponse:
-        file = await FileDAO.get_file(db, item_id)
+    async def download_file(self, item_id: uuid.UUID) -> FileResponse:
+        file = await self.file_dao.get_file(item_id)
         if not file or file.status != "active":
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier introuvable")
         if file.is_directory:
             raise HTTPException(HTTPStatus.BAD_REQUEST, "Les dossiers ne sont pas supportés ici")
 
-        physical_path = await self.compute_physical_path_async(db, file, self.storage_root)
+        physical_path = await self.compute_physical_path(file, self.storage_root)
         if not physical_path.exists():
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier physique introuvable")
 
@@ -316,15 +290,29 @@ class FileService(IFileService):
         res.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         return res
 
-    async def get_item_physical_path(self, item_id: uuid.UUID, db: AsyncSession) -> Path:
-        file = await FileDAO.get_file(db, item_id)
+    async def get_item_physical_path(self, item_id: uuid.UUID) -> Path:
+        file = await self.file_dao.get_file(item_id)
         if not file or file.status != "active":
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier introuvable")
         if file.is_directory:
             raise HTTPException(HTTPStatus.BAD_REQUEST, "Les dossiers n'ont pas de chemin physique")
 
-        physical_path = await self.compute_physical_path_async(db, file, self.storage_root)
+        physical_path = await self.compute_physical_path(file, self.storage_root)
         if not physical_path.exists():
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier physique introuvable")
 
         return physical_path
+    
+    async def get_file_by_id(self, file_id: str) -> File:
+        return await self.file_dao.get_file(file_id)
+    
+    async def compute_physical_path(
+        self, file: File, storage_root: Path
+    ) -> Path:
+        """
+        Retourne le chemin physique complet du fichier ou dossier
+        """
+        print(file.logical_name)
+        print(file.id)
+        parts = await self.file_dao.get_full_path_parts(file.id)
+        return storage_root / file.storage_bucket / Path(*parts)

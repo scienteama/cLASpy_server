@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     UPLOAD_DIR: str = "data/storage"
+    TEMP_DIR: str = "data/storage/temp"
     TRASH_DIR: str = "data/storage/trash"
     RECOVERY_DIR: str = "data/storage/recovery"
     DEFAULT_OUTPUT_DIR: str = "data/storage/outputs"
@@ -45,7 +46,8 @@ class Settings(BaseSettings):
 
     def get_public_settings(self) -> dict:
         """Retourne les paramètres publics, excluant les champs sensibles."""
-        return self.model_dump(exclude={'db_user', 'db_password', 'db_port', 'db_host', 'db_name', 'SECRET_KEY', 'ALGORITHM'})
+        return self.model_dump(exclude={'db_user', 'db_password', 'db_port',
+                               'db_host', 'db_name', 'SECRET_KEY', 'ALGORITHM'})
 
 
 @lru_cache()
