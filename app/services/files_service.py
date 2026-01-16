@@ -1,4 +1,5 @@
 from http import HTTPStatus
+import os
 from pathlib import Path
 import shutil
 import uuid
@@ -106,7 +107,9 @@ class FileService:
                 parent_id=parent_id,
                 logical_name=file.filename,
                 is_directory=False,
-                mime_type=file.content_type,
+                mime_type="application/las"
+                    if os.path.splitext(file.filename)[1] == ".las"
+                    else file.content_type,
                 size_bytes=temp_path.stat().st_size,
                 status="active",
                 storage_bucket=storage_bucket
