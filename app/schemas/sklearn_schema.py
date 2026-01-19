@@ -9,11 +9,10 @@ class AlgoParam(BaseModel):
     choices: Optional[List[str]] = Field(None, description="Liste des valeurs possibles")
     default: Optional[str] = Field(None, description="Valeur par défaut")
 
-
-class AlgoParamsResponse(RootModel[Dict[str, AlgoParam]]):
+class AlgoParamsResponse(BaseModel):
     """Retour complet des paramètres enrichis pour un algorithme sklearn."""
-    pass
-
+    description: str = Field(..., description="Description générale de l'algorithme")
+    parameters: Dict[str, AlgoParam] = Field(..., description="Paramètres enrichis")
 
 class TrainArguments(BaseModel):
     input_data: str

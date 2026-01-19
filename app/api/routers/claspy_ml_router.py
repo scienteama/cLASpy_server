@@ -16,11 +16,19 @@ def get_claspy_ml_core_version(claspyML_service: Annotated[ClaspyMLService, Depe
     return version
 
 
-@router.get("/algorithms/{name}/params", response_model=ApiResponse[Dict[str, AlgoParam]])
+@router.get("/algorithms/{name}/params", response_model=ApiResponse[AlgoParamsResponse])
 def get_algo_params(name: str, claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)]):
-    params_dict = claspyML_service.get_algorithm_parameters(name)
-    model_params = AlgoParamsResponse(root=params_dict)
-    return ApiResponse[Dict[str, AlgoParam]](data=model_params.model_dump())
+    params_dict, description = claspyML_service.get_algorithm_parameters(name)
+    
+    # Convertit chaque paramètre en AlgoParam
+    model_params = {k: AlgoParam(**v) for k, v in params_dict.items()}
+
+    response = AlgoParamsResponse(
+        description=description,
+        parameters=model_params
+    )
+
+    return ApiResponse[AlgoParamsResponse](data=response)
 
 
 @router.get("/algorithms", response_model=ApiResponse[List[str]])

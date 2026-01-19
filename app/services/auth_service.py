@@ -32,7 +32,7 @@ class AuthService:
         except (TypeError, ValueError):
             expire_minutes = 30
         expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
-        to_encode["exp"] = expire
+        to_encode["exp"] = int(expire.timestamp()) 
         encoded_jwt = jwt.encode(to_encode, self.config.SECRET_KEY, algorithm=self.config.ALGORITHM)
         return Token(access_token=encoded_jwt, token_type="bearer")
 

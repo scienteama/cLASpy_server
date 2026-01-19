@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import HTTPStatus
 import inspect
 import os
 from pathlib import Path
@@ -66,20 +67,30 @@ class ClaspyMLService:
         Retourne les paramètres enrichis d'un algorithme sklearn.ensemble
         spécifié par son nom.
         """
-        if self.algorithms is None or algorithms is None or enrich_algorithm_params is None:
-            return None
+        try:
 
-        # Récupère la classe sklearn correspondante au nom
-        algo_class = getattr(self.algorithms, name, None)
-        if algo_class is None:
-            raise ValueError(f"Algorithm '{name}' not found in sklearn.ensemble")
+            if self.algorithms is None or algorithms is None or enrich_algorithm_params is None:
+                return None
 
-        # Instancie l'algorithme
-        self.trainer = algo_class()
+            # Récupère la classe sklearn correspondante au nom
+            algo_class = getattr(self.algorithms, name, None)
+            if algo_class is None:
+                raise ValueError(f"Erreur '{name}' Non trouvé.")
 
-        # Retourne les paramètres enrichis
-        return enrich_algorithm_params(self.trainer)
-
+            # Retourne les paramètres enrichis
+            return enrich_algorithm_params(algo_class())
+        
+        except TypeError as t:
+            raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la récupération des paramètres pour '{name}' : {t}"
+        )
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}"
+            )
+        
     async def process_file(self, req: Request, keepOnServer: bool, folder_id: str,
                            file: UploadFile | None = None) -> dict:
         """
