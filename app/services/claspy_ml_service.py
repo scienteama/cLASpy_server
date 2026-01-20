@@ -7,7 +7,9 @@ import tempfile
 from typing import List, Optional, Dict
 from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
+from app.schemas.train_schema import PointCloudInfo
 from app.services.files_service import FileService
+from app.utils.claspy_ml_utils import parse_cloud_points_info
 
 try:
     from cLASpy_ML import cLASpy_Classes
@@ -91,8 +93,8 @@ class ClaspyMLService:
                 detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}"
             )
         
-    async def process_file(self, req: Request, keepOnServer: bool, folder_id: str,
-                           file: UploadFile | None = None) -> dict:
+    async def upload_file(self, req: Request, keepOnServer: bool, folder_id: str,
+                           file: UploadFile | None = None) -> PointCloudInfo:
         """
         Charge un fichier .las ou .csv et retourne les infos du nuage de points.
         """
@@ -120,15 +122,38 @@ class ClaspyMLService:
 
         assert file is not None, "Aucun fichier fourni"
         return await self.process_temp_file(file)
+    
+    async def load_file(self, file_id : str) -> PointCloudInfo:
+        """
+        Charge un fichier .las ou .csv déja existant et retourne les infos du nuage de points.
+        """
+        if file_id is None:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Id fichier invalide ou manquant"
+            )
+        
+        file = await self.file_service.get_file_by_id(file_id)
 
-    def process_existing_file(self, physical_path: Path) -> dict:
+        if file is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail="Fichier non trouvé"
+            )
+        
+        file_path = await self.file_service.compute_physical_path(file)
+        
+        return self.process_existing_file(file_path)
+
+
+    def process_existing_file(self, physical_path: Path) -> PointCloudInfo:
         """
         Traitement d'un fichier déjà présent sur le serveur.
         """
         path = Path(physical_path)
         return self.get_point_cloud_info(str(path), str(path.parent))
 
-    async def process_temp_file(self, file: UploadFile) -> dict:
+    async def process_temp_file(self, file: UploadFile) -> PointCloudInfo:
         """
         Sauvegarde et traite un fichier temporairement.
         """
@@ -150,17 +175,29 @@ class ClaspyMLService:
         finally:
             os.remove(tmp_path)
 
-    def get_point_cloud_info(self, input_path: str, output_path: str) -> dict:
+    def get_point_cloud_info(self, input_path: str, output_path: str) -> PointCloudInfo:
         if self.trainer is None:
-            raise ModuleNotFoundError("Module ClaspyTrainer non chargé.")
+            raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
 
         self.trainer = ClaspyTrainer(input_data=input_path, output_data=output_path)
+
+        self.get_data_features()
 
         path_to_file = Path(input_path)
         filename = path_to_file.name
 
-        return {
-            "claspy_msg": self.trainer.point_cloud_info(),
-            "details": f"Chargement du fichier : {filename} effectué avec succès.",
-            "path": f"{Path(*path_to_file.parts[-4:]).as_posix()}"
-        }
+        # Charge les informations de base du fichier 
+        file_infos = parse_cloud_points_info(self.trainer.point_cloud_info(), filename)
+        # Charge la liste des features
+        file_infos.feat_list = self.get_data_features()
+
+        return file_infos
+    
+    def get_data_features(self) ->  List[str]:
+        if self.trainer is None:
+            raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
+        return self.trainer.get_data_features()
+
+        
+
+

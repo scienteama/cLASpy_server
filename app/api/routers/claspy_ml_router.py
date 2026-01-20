@@ -4,6 +4,7 @@ from fastapi.params import Form
 from app.core.provider import get_claspyml_service, get_file_service
 from app.schemas.response_schema import ApiResponse
 from app.schemas.sklearn_schema import AlgoParam, AlgoParamsResponse
+from app.schemas.train_schema import PointCloudInfo
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.files_service import FileService
 
@@ -38,7 +39,7 @@ def get_algorithms(claspyML_service: Annotated[ClaspyMLService,
     return ApiResponse[List[str]](data=algos)
 
 
-@router.post("/load-data", response_model=ApiResponse[dict])
+@router.post("/load-data", response_model=ApiResponse[PointCloudInfo])
 async def load_data_file(
     req: Request,
     claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)],
@@ -49,5 +50,18 @@ async def load_data_file(
     """
     Charge un fichier de données (.las ou .csv) et retourne des informations sur le nuage de points.
     """
-    result = await claspyML_service.process_file(req, keepOnServer, folderId, file)
-    return ApiResponse[dict](data=result)
+    result = await claspyML_service.upload_file(req, keepOnServer, folderId, file)
+    return ApiResponse[PointCloudInfo](data=result)
+
+@router.get('/load-file/{file_id}', response_model=ApiResponse[PointCloudInfo])
+async def load_existing_file(
+    req: Request,
+    file_id: str,
+    claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)]
+):
+    """
+    Charge un fichier de données déjà existant (.las ou .csv) et retourne des informations sur le nuage de points.
+    """
+
+    result = await claspyML_service.load_file(file_id)
+    return ApiResponse[PointCloudInfo](data=result)

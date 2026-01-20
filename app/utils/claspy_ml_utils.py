@@ -1,5 +1,6 @@
 
 import inspect
+from pathlib import Path
 import re
 from typing import Dict, List, Optional, Tuple
 import inspect
@@ -8,6 +9,8 @@ from typing import Dict, Any
 import inspect
 import re
 from typing import Dict, Any
+
+from app.schemas.train_schema import PointCloudInfo
 
 
 def get_description_from_doc(algo_class) -> str:
@@ -138,4 +141,31 @@ def enrich_algorithm_params(algo_class) -> Tuple[Dict[str, dict], str]:
     description = doc_info.get("description", "")
 
     return enriched, description
+
+def parse_cloud_points_info(text: str, file_name: str) -> PointCloudInfo:
+    """
+    Parse le retour de "ClaspyTrainer.point_cloud_info()" pour générer un PointCloudInfo
+    """
+    ext = Path(file_name).suffix.lower()
+    if ext not in ('.las', '.csv'):
+        raise ValueError(f"Extension de fichier non supportée : {ext}")
+
+    points_match = re.search(
+        r"Number of points:\s*([\d]+(?:[.,\s][\d]{3})*)",
+        text,
+        re.IGNORECASE,
+    )
+    if not points_match:
+        raise ValueError("Impossible d'extraire le nombre de points")
+
+    version_match = re.search(r"LAS Version:\s*([\d.]+)", text, re.IGNORECASE)
+    format_match = re.search(r"LAS point format:\s*(\d+)", text, re.IGNORECASE)
+
+    return PointCloudInfo(
+        file_name=file_name,
+        file_type=ext,
+        points_number=int(re.sub(r"[^\d]", "", points_match.group(1))),
+        las_version=float(version_match.group(1)) if version_match else None,
+        las_point_format=int(format_match.group(1)) if format_match else None,
+    )
 
