@@ -108,8 +108,8 @@ class FileService:
                 logical_name=file.filename,
                 is_directory=False,
                 mime_type="application/las"
-                    if os.path.splitext(file.filename)[1] == ".las"
-                    else file.content_type,
+                if os.path.splitext(file.filename)[1] == ".las"
+                else file.content_type,
                 size_bytes=temp_path.stat().st_size,
                 status="active",
                 storage_bucket=storage_bucket

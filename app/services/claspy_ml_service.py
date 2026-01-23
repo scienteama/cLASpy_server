@@ -16,6 +16,7 @@ try:
     from cLASpy_ML import cLASpy_T
     from cLASpy_ML.cLASpy_Classes import ClaspyTrainer, cLASpy_Core_version
     import sklearn.ensemble as algorithms
+    import sklearn.neural_network as nn
     from app.utils.claspy_ml_utils import enrich_algorithm_params
 except ModuleNotFoundError as e:
     cLASpy_Classes = None
@@ -36,6 +37,8 @@ class ClaspyMLService:
             self.trainer = ClaspyTrainer
         if algorithms is not None:
             self.algorithms = algorithms
+        if nn is not None:
+            self.neural_network = nn
         if cLASpy_T is not None:
             self.claspy_t_version = cLASpy_T.cLASpy_T_version
             self.claspy_t = cLASpy_T
@@ -55,14 +58,17 @@ class ClaspyMLService:
         """
         Retourne la liste des algorithmes disponibles dans sklearn.ensemble.
         """
-        if self.algorithms is None or algorithms is None:
-            raise ModuleNotFoundError("Plugin cLASpy_ML non chargé.")
-
-        algo_names = [
+        algos_names = [
             name for name, obj in inspect.getmembers(self.algorithms, inspect.isclass)
             if not name.startswith("_")
         ]
-        return algo_names
+
+        neural_network_algos = [
+            name for name, obj in inspect.getmembers(self.neural_network, inspect.isclass)
+            if not name.startswith("_")
+        ]
+
+        return algos_names + neural_network_algos
 
     def get_algorithm_parameters(self, name: str) -> Optional[Dict[str, dict]]:
         """
@@ -71,30 +77,32 @@ class ClaspyMLService:
         """
         try:
 
-            if self.algorithms is None or algorithms is None or enrich_algorithm_params is None:
-                return None
+            if name in ["MLPClassifier", "MLPRegressor"]:
+                sklearn_class = self.neural_network
+            else:
+                sklearn_class = self.algorithms
 
             # Récupère la classe sklearn correspondante au nom
-            algo_class = getattr(self.algorithms, name, None)
+            algo_class = getattr(sklearn_class, name, None)
             if algo_class is None:
                 raise ValueError(f"Erreur '{name}' Non trouvé.")
 
             # Retourne les paramètres enrichis
             return enrich_algorithm_params(algo_class())
-        
+
         except TypeError as t:
             raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de la récupération des paramètres pour '{name}' : {t}"
-        )
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Erreur lors de la récupération des paramètres pour '{name}' : {t}"
+            )
         except Exception as e:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}"
             )
-        
+
     async def upload_file(self, req: Request, keepOnServer: bool, folder_id: str,
-                           file: UploadFile | None = None) -> PointCloudInfo:
+                          file: UploadFile | None = None) -> PointCloudInfo:
         """
         Charge un fichier .las ou .csv et retourne les infos du nuage de points.
         """
@@ -122,8 +130,8 @@ class ClaspyMLService:
 
         assert file is not None, "Aucun fichier fourni"
         return await self.process_temp_file(file)
-    
-    async def load_file(self, file_id : str) -> PointCloudInfo:
+
+    async def load_file(self, file_id: str) -> PointCloudInfo:
         """
         Charge un fichier .las ou .csv déja existant et retourne les infos du nuage de points.
         """
@@ -132,7 +140,7 @@ class ClaspyMLService:
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail="Id fichier invalide ou manquant"
             )
-        
+
         file = await self.file_service.get_file_by_id(file_id)
 
         if file is None:
@@ -140,11 +148,10 @@ class ClaspyMLService:
                 status_code=HTTPStatus.NOT_FOUND,
                 detail="Fichier non trouvé"
             )
-        
-        file_path = await self.file_service.compute_physical_path(file)
-        
-        return self.process_existing_file(file_path)
 
+        file_path = await self.file_service.compute_physical_path(file)
+
+        return self.process_existing_file(file_path)
 
     def process_existing_file(self, physical_path: Path) -> PointCloudInfo:
         """
@@ -186,18 +193,14 @@ class ClaspyMLService:
         path_to_file = Path(input_path)
         filename = path_to_file.name
 
-        # Charge les informations de base du fichier 
+        # Charge les informations de base du fichier
         file_infos = parse_cloud_points_info(self.trainer.point_cloud_info(), filename)
         # Charge la liste des features
         file_infos.feat_list = self.get_data_features()
 
         return file_infos
-    
-    def get_data_features(self) ->  List[str]:
+
+    def get_data_features(self) -> List[str]:
         if self.trainer is None:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
         return self.trainer.get_data_features()
-
-        
-
-

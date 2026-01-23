@@ -36,6 +36,7 @@ def get_description_from_doc(algo_class) -> str:
 
     return "\n".join(lines)
 
+
 def parse_type_and_default(full_text: str) -> Tuple[str, Optional[str], Optional[List[str]]]:
     """
     Extrait types et valeurs par défaut d'un paramètre d'algorithme sklearn.
@@ -54,8 +55,9 @@ def parse_type_and_default(full_text: str) -> Tuple[str, Optional[str], Optional
     if default_match:
         typeinfo = typeinfo[:default_match.start()]
     typeinfo = typeinfo.strip().rstrip(",")
-    
+
     return typeinfo, default, choices
+
 
 def get_params_from_doc(algo_class) -> Dict[str, dict]:
     """
@@ -106,6 +108,7 @@ def get_params_from_doc(algo_class) -> Dict[str, dict]:
 
     return params
 
+
 def parse_sklearn_doc(algo_class) -> Dict[str, Any]:
     """
     Fusionne description et paramètres documentés.
@@ -142,6 +145,7 @@ def enrich_algorithm_params(algo_class) -> Tuple[Dict[str, dict], str]:
 
     return enriched, description
 
+
 def parse_cloud_points_info(text: str, file_name: str) -> PointCloudInfo:
     """
     Parse le retour de "ClaspyTrainer.point_cloud_info()" pour générer un PointCloudInfo
@@ -168,4 +172,3 @@ def parse_cloud_points_info(text: str, file_name: str) -> PointCloudInfo:
         las_version=float(version_match.group(1)) if version_match else None,
         las_point_format=int(format_match.group(1)) if format_match else None,
     )
-

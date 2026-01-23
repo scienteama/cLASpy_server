@@ -20,7 +20,7 @@ def get_claspy_ml_core_version(claspyML_service: Annotated[ClaspyMLService, Depe
 @router.get("/algorithms/{name}/params", response_model=ApiResponse[AlgoParamsResponse])
 def get_algo_params(name: str, claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)]):
     params_dict, description = claspyML_service.get_algorithm_parameters(name)
-    
+
     # Convertit chaque paramètre en AlgoParam
     model_params = {k: AlgoParam(**v) for k, v in params_dict.items()}
 
@@ -52,6 +52,7 @@ async def load_data_file(
     """
     result = await claspyML_service.upload_file(req, keepOnServer, folderId, file)
     return ApiResponse[PointCloudInfo](data=result)
+
 
 @router.get('/load-file/{file_id}', response_model=ApiResponse[PointCloudInfo])
 async def load_existing_file(
