@@ -16,8 +16,6 @@ from app.api.routers.config_router import router as config_router
 from app.schemas.error_schema import ErrorResponse
 
 # Lifespan pour FastAPI
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Création de la connexion à la DB au démarrage

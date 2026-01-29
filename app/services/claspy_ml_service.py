@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
 import inspect
 import os
@@ -174,7 +174,7 @@ class ClaspyMLService:
             tmp.write(content)
             tmp_path = tmp.name
         try:
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             timestamp_str = now.strftime("%Y%m%d_%H%M%S")
             output_path = Path(self.config.DEFAULT_OUTPUT_DIR) / timestamp_str
             os.makedirs(output_path, exist_ok=True)

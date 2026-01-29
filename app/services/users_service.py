@@ -6,7 +6,7 @@ from app.schemas.role_schema import UserRole
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
 from app.utils.auth_utils import hash_password, raise_auth_exception
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class UserService:
@@ -29,8 +29,8 @@ class UserService:
             email=user_data.email,
             password=hashed_password,
             role_id=user_data.role_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         created_user = await self.userDAO.create(user)
 
@@ -88,7 +88,7 @@ class UserService:
 
         if "password" in update_data and update_data["password"]:
             update_data["password"] = hash_password(update_data["password"])
-        update_data["updated_at"] = datetime.now()
+        update_data["updated_at"] = datetime.now(timezone.utc)
 
         updated_user = await self.userDAO.update(user_id, update_data)
         return UserOut.model_validate(updated_user)

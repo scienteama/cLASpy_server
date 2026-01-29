@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -66,28 +66,13 @@ async def seed():
                     email=u["email"],
                     password=hash_password(u["password"]),
                     role_id=role.id,
-                    created_at=datetime.now()
+                    created_at=datetime.now(timezone.utc)
                 )
                 session.add(user)
 
         await session.commit()
 
-        # ---- Créer les dossiers utilisateurs ----
-        await create_users_directories(session, config)
-
-        print("✅ Base remplie avec succès !")
-
-
-async def create_users_directories(db: AsyncSession, config):
-    stmt = select(User)
-    result = await db.execute(stmt)
-    users: List[User] = result.scalars().all()
-
-    for u in users:
-        folder_name = f"{u.id}_{u.firstname[0].lower()}{u.lastname.lower()}"
-        user_dir = Path(config.UPLOAD_DIR) / "users" / folder_name
-        user_dir.mkdir(parents=True, exist_ok=True)
-
+        print("✅ Base initialisée avec succès !")
 
 if __name__ == "__main__":
     asyncio.run(seed())

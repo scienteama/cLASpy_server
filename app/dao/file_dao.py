@@ -1,6 +1,6 @@
 from typing import Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.file import File
@@ -44,7 +44,7 @@ class FileDAO:
         parent_id: Optional[uuid.UUID] = None,
         include_deleted: bool = False
     ):
-        """Liste les enfants d’un dossier selon l’user et le status."""
+        """Liste les enfants d'un dossier selon l'user et le status."""
         stmt = select(File).where(File.parent_id == parent_id)
         if not include_deleted:
             stmt = stmt.where(File.status == "active")
@@ -91,7 +91,7 @@ class FileDAO:
     async def soft_delete(self, file: File):
         """Marque un fichier/dossier comme supprimé (soft delete)."""
         file.status = "deleted"
-        file.updated_at = datetime.now()
+        file.updated_at = datetime.now(timezone.utc)
         await self.db.flush()
 
     async def reactivate(self, file: File):
@@ -99,14 +99,14 @@ class FileDAO:
         if file.status == "missing":
             raise Exception("Impossible de réactiver un fichier manquant")
         file.status = "active"
-        file.updated_at = datetime.now()
+        file.updated_at = datetime.now(timezone.utc)
         await self.db.flush()
 
     async def mark_file_missing(self, file: File):
         """Marque un fichier comme manquant sur le disque."""
         if file.status != "missing":
             file.status = "missing"
-            file.updated_at = datetime.now()
+            file.updated_at = datetime.now(timezone.utc)
             await self.db.flush()
 
     async def hard_delete(self, file: File):
@@ -120,7 +120,7 @@ class FileDAO:
 
     async def rename(self, file: File, new_name: str):
         file.logical_name = new_name
-        file.updated_at = datetime.now()
+        file.updated_at = datetime.now(timezone.utc)
         await self.db.flush()
 
     # ------------------------

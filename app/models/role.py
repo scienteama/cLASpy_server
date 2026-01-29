@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
@@ -11,8 +11,12 @@ class Role(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, index=True, nullable=False)
     description = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(
+            timezone=True), nullable=False, default=lambda: datetime.now(
+            timezone.utc), onupdate=lambda: datetime.now(
+                timezone.utc))
 
     users = relationship("User", back_populates="role")
 

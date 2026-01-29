@@ -20,7 +20,7 @@ class AuthService:
     async def authenticate(self, email: str, password: str) -> UserOut:
         user = await self.user_service.get_full_user_by_email(email)
         if verify_password(password, user.password):
-            await self.user_service.update_user_by_id(user.id, UserUpdate(last_login=datetime.now()))
+            await self.user_service.update_user_by_id(user.id, UserUpdate(last_login=datetime.now(timezone.utc)))
             return UserOut.model_validate(user)
         else:
             raise_auth_exception("Email ou mot de passe incorrect")

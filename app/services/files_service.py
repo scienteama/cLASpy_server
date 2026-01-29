@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import uuid
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import UploadFile, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
@@ -182,8 +182,8 @@ class FileService:
             id=str(parent_id) if parent_id else "root",
             name=None,
             depth=depth,
-            created_at=datetime.now(),
-            modified_at=datetime.now(),
+            created_at=datetime.now(timezone.utc),
+            modified_at=datetime.now(timezone.utc),
             children=[],
             size_bytes=0,
             user_id=user_id if parent_id is None else None

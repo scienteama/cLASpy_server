@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, BigInteger, DateTime, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import hashlib
 from app.database import Base
@@ -24,8 +24,12 @@ class File(Base):
 
     status = Column(String, default="active")  # active | deleted | missing
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(
+            timezone=True), nullable=False, default=lambda: datetime.now(
+            timezone.utc), onupdate=lambda: datetime.now(
+                timezone.utc))
 
     # ------------------------
     # User-specific storage bucket
