@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from http import HTTPStatus
 import inspect
@@ -7,7 +8,7 @@ import tempfile
 from typing import List, Optional, Dict
 from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
-from app.schemas.train_schema import PointCloudInfo
+from app.schemas.train_schema import PointCloudInfo, TrainParameters
 from app.services.files_service import FileService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
 
@@ -60,12 +61,12 @@ class ClaspyMLService:
         """
         algos_names = [
             name for name, obj in inspect.getmembers(self.algorithms, inspect.isclass)
-            if not name.startswith("_")
+            if not name.startswith("_") and "Regressor" not in name
         ]
 
         neural_network_algos = [
             name for name, obj in inspect.getmembers(self.neural_network, inspect.isclass)
-            if not name.startswith("_")
+            if not name.startswith("_") and "Regressor" not in name
         ]
 
         return algos_names + neural_network_algos
@@ -204,3 +205,33 @@ class ClaspyMLService:
         if self.trainer is None:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
         return self.trainer.get_data_features()
+    
+
+
+    async def run_train(self, params: TrainParameters) -> str:
+        """
+        Lance un entraînement avec les paramètres spécifiés.
+        """
+        if not params.file_id:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Id fichier invalide ou manquant"
+            )
+
+        file = await self.file_service.get_file_by_id(params.file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail="Fichier non trouvé"
+            )
+
+        file_path = await self.file_service.compute_physical_path(file)
+        
+        params.input_data = str(file_path)
+        params.output = str(file_path.parent)
+        params.algo = self.claspy_t.shortname_algo(params.algorithm)
+
+        # Appel de train dans un thread
+        await asyncio.to_thread(self.claspy_t.train, arguments=params)
+
+        return "Train OK"

@@ -1,12 +1,11 @@
-from typing import Annotated, Dict, List
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from typing import Annotated, List
+from fastapi import APIRouter, Body, Depends, File, Request, UploadFile
 from fastapi.params import Form
-from app.core.provider import get_claspyml_service, get_file_service
+from app.core.provider import get_claspyml_service
 from app.schemas.response_schema import ApiResponse
 from app.schemas.sklearn_schema import AlgoParam, AlgoParamsResponse
-from app.schemas.train_schema import PointCloudInfo
+from app.schemas.train_schema import PointCloudInfo, TrainParameters
 from app.services.claspy_ml_service import ClaspyMLService
-from app.services.files_service import FileService
 
 router = APIRouter()
 
@@ -66,3 +65,16 @@ async def load_existing_file(
 
     result = await claspyML_service.load_file(file_id)
     return ApiResponse[PointCloudInfo](data=result)
+
+@router.post('/run-train', response_model=ApiResponse[str])
+async def run_train_async(
+    req: Request,
+    claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)],
+    train_params: TrainParameters = Body(...)
+):
+    """
+    Lance un entraînement avec les paramètres spécifiés.
+    """
+
+    result = await claspyML_service.run_train(train_params)
+    return ApiResponse[str](data=result)
