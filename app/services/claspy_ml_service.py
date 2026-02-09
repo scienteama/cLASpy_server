@@ -230,17 +230,16 @@ class ClaspyMLService:
         params.output = str(file_path.parent)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
 
-        result = "Entraînement terminé"
-        celery = ModulesService.init_client_worker()
-        if celery:
-            task = celery.send_task(
+        worker = ModulesService.init_client_worker()
+        if worker:
+            task_id = worker.send_task(
                 "taskrunner.tasks.ml.train_task",
                 args=[params.model_dump(), "Entraînement démarré"],
                 queue="ml")
 
-            result = task.id
+            return f"Tâche n'° {task_id} ajoutée avec succès."
         else:
             self.claspy_t.train(arguments=params)
             pass
 
-        return result
+        return "Entraînement terminé"

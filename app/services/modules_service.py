@@ -122,18 +122,17 @@ class ModulesService:
     def init_client_worker(cls):
         modules = cls.list_claspy_modules()
 
-        for module in modules:
-            if module.name == "taskrunner" and module.enable:
+        if any(mod.name == "taskrunner" and mod.enable for mod in modules):
 
-                broker_url = f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//"
-                result_backend = f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"
+            broker_url = f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//"
+            result_backend = f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"
 
-                worker = Celery(
-                    "taskrunner",
-                    broker=broker_url,
-                    backend=result_backend,
-                )
-                worker.conf.update(imports=["taskrunner.tasks.ml"])
-                return worker
-            else:
-                return None
+            worker = Celery(
+                "taskrunner",
+                broker=broker_url,
+                backend=result_backend,
+            )
+            worker.conf.update(imports=["taskrunner.tasks.ml"])
+            return worker
+        else:
+            return None

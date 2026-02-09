@@ -5,17 +5,17 @@
 1. Clone the repository:
 
 2. Create a virtual environment:
-   ```
+   ``` bash
    python -m venv venv
    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
 3. Install the required packages:
-   ```
+   ``` bash
    pip install -r requirements.txt
    ```
 
 4. Launch and install Database:
-   ```
+   ``` bash
    cd db
 
    docker network create claspy-net
@@ -24,10 +24,10 @@
 
    ```
 5. Apply migrations and seed db:
-   ```
-   alembic upgrade head
+   ``` bash
+      alembic upgrade head
 
-   python -m db.seed  
+      python -m db.seed  
 
    ```
 
@@ -38,18 +38,31 @@ Before running the application, ensure that the database configuration in `app/d
 ## Running the Application
 
 To start the application, run:
-```
+``` bash
 python -m app.main
 ```
 
 ## Database Migrations
 
 Database migrations are managed using Alembic. To create a new migration, run:
-```
+``` bash
 alembic revision --autogenerate -m "Migration message"
 ```
 
 To apply migrations, run:
-```
+``` bash
 alembic upgrade head
+```
+
+## TaskRunner 
+
+Launch taskrunner infra with .env integration: 
+``` bash
+python -m taskrunner.cli start-infra --env-file .env
+```
+
+Start worker with .env integration and "ml" queue : 
+
+``` bash
+python -m taskrunner.cli start-worker --queue ml --env-file .env
 ```

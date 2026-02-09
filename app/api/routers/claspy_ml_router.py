@@ -78,4 +78,4 @@ async def run_train_async(
     """
 
     result = await claspyML_service.run_train(train_params)
-    return ApiResponse[str](data=result)
+    return ApiResponse[str](result=result)
