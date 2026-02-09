@@ -10,6 +10,7 @@ from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
 from app.schemas.train_schema import PointCloudInfo, TrainParameters
 from app.services.files_service import FileService
+from app.services.modules_service import ModulesService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
 
 try:
@@ -205,10 +206,8 @@ class ClaspyMLService:
         if self.trainer is None:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
         return self.trainer.get_data_features()
-    
 
-
-    async def run_train(self, params: TrainParameters) -> str:
+    async def run_train(self, params: TrainParameters):
         """
         Lance un entraînement avec les paramètres spécifiés.
         """
@@ -226,12 +225,22 @@ class ClaspyMLService:
             )
 
         file_path = await self.file_service.compute_physical_path(file)
-        
+
         params.input_data = str(file_path)
         params.output = str(file_path.parent)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
 
-        # Appel de train dans un thread
-        await asyncio.to_thread(self.claspy_t.train, arguments=params)
+        result = "Entraînement terminé"
+        celery = ModulesService.init_client_worker()
+        if celery:
+            task = celery.send_task(
+                "taskrunner.tasks.ml.train_task",
+                args=[params.model_dump(), "Entraînement démarré"],
+                queue="ml")
 
-        return "Train OK"
+            result = task.id
+        else:
+            self.claspy_t.train(arguments=params)
+            pass
+
+        return result

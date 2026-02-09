@@ -1,6 +1,5 @@
-# deploy with portainerized Postgres for production
 services:
-  db-prod:
+  db:
     image: postgres
     container_name: claspy_db
     restart: always
@@ -13,8 +12,12 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
       - TZ=Europe/Paris
+    networks:
+      - claspy-net
 
 volumes:
   claspy_db_data:
 
-
+networks:
+  claspy-net:
+    external: true

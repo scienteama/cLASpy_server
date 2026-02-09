@@ -1,16 +1,17 @@
-import importlib
+from app.models import *
+from app.core.config import get_settings
+from app.database import Base
 from logging.config import fileConfig
-import pkgutil
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to sys.path
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-from app.database import Base
-from app.core.config import get_settings
-from app.models import * 
 
 config = context.config
 fileConfig(config.config_file_name)
@@ -18,6 +19,7 @@ target_metadata = Base.metadata
 
 DATABASE_URL = get_settings().DATABASE_URL
 SYNC_DATABASE_URL = DATABASE_URL.replace("asyncpg", "psycopg2")
+
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode."""

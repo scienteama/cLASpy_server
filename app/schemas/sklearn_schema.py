@@ -14,4 +14,3 @@ class AlgoParamsResponse(BaseModel):
     """Retour complet des paramètres enrichis pour un algorithme sklearn."""
     description: str = Field(..., description="Description générale de l'algorithme")
     parameters: Dict[str, AlgoParam] = Field(..., description="Paramètres enrichis")
-

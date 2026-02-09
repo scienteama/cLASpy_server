@@ -14,6 +14,23 @@
    pip install -r requirements.txt
    ```
 
+4. Launch and install Database:
+   ```
+   cd db
+
+   docker network create claspy-net
+
+   docker compose -f docker-compose.db.yml up -d
+
+   ```
+5. Apply migrations and seed db:
+   ```
+   alembic upgrade head
+
+   python -m db.seed  
+
+   ```
+
 ## Configuration
 
 Before running the application, ensure that the database configuration in `app/database.py` is set correctly. Update the `DATABASE_URL` with your PostgreSQL credentials.

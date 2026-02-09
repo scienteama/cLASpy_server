@@ -1,19 +1,25 @@
 [
   {
     "name": "claspy_ml",
+    "egg": "cLASpy_ML",
     "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@vg_dev#egg=cLASpy_ML",
     "description": "Module de Machine Learning de cLASpy",
     "tooltip": "Permet l'entraînement et l'évaluation de modèles ML"
   },
   {
+    "name": "taskrunner",
+    "egg": "TaskRunner",
+    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/taskrunner.git@main#egg=taskrunner",
+    "description": "Service pour l'éxécution de tâches ML",
+    "tooltip": "Permet l'éxecution de tâches ML de façon asynchrone dans des queues"
+  },
+  {
     "name": "claspy_dl",
-    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@vg_dev#egg=cLASpy_DL",
     "description": "Module Deep Learning",
     "tooltip": "Réseaux de neurones et modèles avancés"
   },
   {
     "name": "claspy_features",
-    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/cLASpy_ML.git@vg_dev#egg=cLASpy_Features",
     "description": "Extraction et transformation des features",
     "tooltip": "Prépare les données pour ML/DL"
   }

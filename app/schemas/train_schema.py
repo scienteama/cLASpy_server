@@ -16,6 +16,7 @@ class PointCloudInfo(BaseModel):
     class Config:
         validate_by_name = True
 
+
 class TrainParameters(BaseModel):
     file_id: str = Field(..., alias="fileId")
     input_data: Optional[str] = None
@@ -41,5 +42,3 @@ class TrainParameters(BaseModel):
 
     class Config:
         validate_by_name = True
-
-

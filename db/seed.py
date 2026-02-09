@@ -1,17 +1,19 @@
 import asyncio
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import List
-
+import os
+import sys
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-
 from app.core.config import get_settings
 from app.database import engine
 from app.models.user import User
 from app.models.role import Role
 from app.utils.auth_utils import hash_password
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 async def seed():

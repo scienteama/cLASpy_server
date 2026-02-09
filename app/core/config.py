@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import List
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -27,6 +26,12 @@ class Settings(BaseSettings):
     TRASH_DIR: str = "data/storage/trash"
     RECOVERY_DIR: str = "data/storage/recovery"
     DEFAULT_OUTPUT_DIR: str = "data/storage/outputs"
+
+    RABBITMQ_DEFAULT_USER: str | None
+    RABBITMQ_DEFAULT_PASS: str | None
+    REDIS_PASSWORD: str | None
+    FLOWER_USER: str | None
+    FLOWER_PWD: str | None
 
     model_config = {
         "env_file": ".env",
