@@ -133,5 +133,5 @@ async def create_directory(
     """
     user_id = int(req.state.user.id)
     role_id = int(req.state.user.role_id)
-    res = await file_service.create_directory(user_id, role_id, name, parent_id=parent_id)
-    return ApiResponse[str](data=res)
+    folder = await file_service.create_directory(user_id, role_id, name, parent_id=parent_id)
+    return ApiResponse[str](data=f"Dossier {folder.logical_name} créé avec succès.")

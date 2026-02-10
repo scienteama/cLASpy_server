@@ -13,6 +13,7 @@ from app.api.routers.file_router import router as file_router
 from app.api.routers.modules_router import router as modules_router
 from app.api.routers.claspy_ml_router import router as claspy_ml_router
 from app.api.routers.config_router import router as config_router
+from app.api.routers.events_router import router as events_router
 from app.schemas.error_schema import ErrorResponse
 
 # Lifespan pour FastAPI
@@ -52,6 +53,7 @@ registry.register(modules_router, prefix="/api/modules", tags=["Modules"])
 registry.register(users_router, prefix="/api/users", tags=["Users"])
 registry.register(file_router, prefix="/api/files", tags=["Files"])
 registry.register(claspy_ml_router, prefix="/api/claspy_ml", tags=["Claspy_ML"])
+registry.register(events_router, prefix="/api/events", tags=["Events"])
 registry.include_all(app)
 
 # Exception Handlers

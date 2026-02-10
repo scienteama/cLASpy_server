@@ -1,10 +1,6 @@
-import asyncio
-from datetime import datetime, timezone
 from http import HTTPStatus
 import inspect
-import os
 from pathlib import Path
-import tempfile
 from typing import List, Optional, Dict
 from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
@@ -103,35 +99,29 @@ class ClaspyMLService:
                 detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}"
             )
 
-    async def upload_file(self, req: Request, keepOnServer: bool, folder_id: str,
+    async def upload_file(self, req: Request, folder_id: str,
                           file: UploadFile | None = None) -> PointCloudInfo:
         """
-        Charge un fichier .las ou .csv et retourne les infos du nuage de points.
+        Upload un fichier .las ou .csv et retourne les infos du nuage de points.
         """
-
         user_id = int(req.state.user.id)
         role_id = int(req.state.user.role_id)
         physical_path = None
 
-        if keepOnServer:
-            parent_id: str | None = None if folder_id.lower() == "root" else folder_id
-            db_file = await self.file_service.save_file(file, user_id, role_id, parent_id)
+        parent_id: str | None = None if folder_id.lower() == "root" else folder_id
+        db_file = await self.file_service.save_file(file, user_id, role_id, parent_id)
 
-            physical_path = await self.file_service.compute_physical_path(
-                await self.file_service.get_file_by_id(db_file.id)
+        physical_path = await self.file_service.compute_physical_path(
+            await self.file_service.get_file_by_id(db_file.id)
+        )
+
+        if not physical_path.exists():
+            raise HTTPException(
+                status_code=500,
+                detail="Le fichier n'a pas été correctement sauvegardé sur le serveur"
             )
 
-            if not physical_path.exists():
-                raise HTTPException(
-                    status_code=500,
-                    detail="Le fichier n'a pas été correctement sauvegardé sur le serveur"
-                )
-
-        if physical_path:
-            return self.process_existing_file(physical_path)
-
-        assert file is not None, "Aucun fichier fourni"
-        return await self.process_temp_file(file)
+        return self.process_existing_file(physical_path)
 
     async def load_file(self, file_id: str) -> PointCloudInfo:
         """
@@ -162,28 +152,6 @@ class ClaspyMLService:
         path = Path(physical_path)
         return self.get_point_cloud_info(str(path), str(path.parent))
 
-    async def process_temp_file(self, file: UploadFile) -> PointCloudInfo:
-        """
-        Sauvegarde et traite un fichier temporairement.
-        """
-        content = await file.read()
-        temp_folder = self.config.TEMP_DIR
-        os.makedirs(temp_folder, exist_ok=True)
-        suffix = f"_{file.filename}"
-        with tempfile.NamedTemporaryFile(
-            delete=False, prefix="tmp_", suffix=suffix, dir=temp_folder
-        ) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-        try:
-            now = datetime.now(timezone.utc)
-            timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-            output_path = Path(self.config.DEFAULT_OUTPUT_DIR) / timestamp_str
-            os.makedirs(output_path, exist_ok=True)
-            return self.get_point_cloud_info(str(tmp_path), str(output_path))
-        finally:
-            os.remove(tmp_path)
-
     def get_point_cloud_info(self, input_path: str, output_path: str) -> PointCloudInfo:
         if self.trainer is None:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
@@ -207,7 +175,7 @@ class ClaspyMLService:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
         return self.trainer.get_data_features()
 
-    async def run_train(self, params: TrainParameters):
+    async def run_train(self, req: Request, params: TrainParameters):
         """
         Lance un entraînement avec les paramètres spécifiés.
         """
@@ -217,29 +185,29 @@ class ClaspyMLService:
                 detail="Id fichier invalide ou manquant"
             )
 
-        file = await self.file_service.get_file_by_id(params.file_id)
-        if file is None:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail="Fichier non trouvé"
-            )
+        params.user_id = int(req.state.user.id)
+        params.role_id = int(req.state.user.role_id)
 
+        file = await self.file_service.get_file_by_id(params.file_id)
         file_path = await self.file_service.compute_physical_path(file)
 
+        if params.folder_id != 'root':
+            folder = await self.file_service.get_file_by_id(params.folder_id)
+            params.output = str(await self.file_service.compute_physical_path(folder))
+        else:
+            params.output = str(file_path.parent)
+
         params.input_data = str(file_path)
-        params.output = str(file_path.parent)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
 
-        worker = ModulesService.init_client_worker()
-        if worker:
-            task_id = worker.send_task(
+        worker_ready = await ModulesService.init_client_worker(params.disable_taskrunner)
+        if worker_ready:
+            task_id = worker_ready.send_task(
                 "taskrunner.tasks.ml.train_task",
                 args=[params.model_dump(), "Entraînement démarré"],
                 queue="ml")
 
             return f"Tâche n'° {task_id} ajoutée avec succès."
         else:
-            self.claspy_t.train(arguments=params)
-            pass
-
-        return "Entraînement terminé"
+            result = self.claspy_t.train(arguments=params)
+            return await self.file_service.save_ml_result(result, params.user_id, params.role_id, params.folder_id)

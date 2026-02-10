@@ -22,6 +22,9 @@ def detect_mimetype(file_path: PathLib, content_type: str | None = None) -> str:
     if file_path.suffix.lower() == ".las":
         return "application/las"
 
+    elif file_path.suffix.lower() == ".model":
+        return "application/model"
+
     # Valeur par défaut
     return "application/octet-stream"
 

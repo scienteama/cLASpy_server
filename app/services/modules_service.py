@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from celery import Celery
 from fastapi import HTTPException
 import httpx
@@ -112,17 +113,24 @@ class ModulesService:
                 response = await client.get(FLOWER_URL, auth=(cls.config.FLOWER_USER, cls.config.FLOWER_PWD))
                 response.raise_for_status()
             except httpx.RequestError as e:
-                raise HTTPException(status_code=503, detail=f"Flower API unreachable: {str(e)}")
+                raise HTTPException(
+                    status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                    detail=f"Flower API unreachable: {str(e)}")
             except httpx.HTTPStatusError as e:
                 raise HTTPException(status_code=response.status_code, detail=f"Flower API error: {response.text}")
 
         return response.json()
 
     @classmethod
-    def init_client_worker(cls):
+    async def init_client_worker(cls, forceDisabled=False):
         modules = cls.list_claspy_modules()
 
+        if forceDisabled:
+            return None
+
         if any(mod.name == "taskrunner" and mod.enable for mod in modules):
+
+            workers = await cls.list_workers()
 
             broker_url = f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//"
             result_backend = f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"

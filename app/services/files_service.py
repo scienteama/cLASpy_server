@@ -2,6 +2,7 @@ from http import HTTPStatus
 import os
 from pathlib import Path
 import shutil
+from typing import List
 import uuid
 import hashlib
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from app.schemas.file_schema import FileModel, FolderModel
 from app.models.file import File
 from app.core.config import get_settings, Settings
 from app.services.users_service import UserService
+from app.utils.file_utils import detect_mimetype
 
 
 class FileService:
@@ -71,7 +73,7 @@ class FileService:
         return file
 
     # ------------------------------------------------------------------
-    # Upload (TRANSACTION SAFE)
+    # Upload File
     # ------------------------------------------------------------------
 
     async def save_file(
@@ -99,7 +101,8 @@ class FileService:
                     f"Fichier '{file.filename}' existe déjà"
                 )
 
-            storage_bucket = hashlib.sha1(str(user_id).encode()).hexdigest()[:8]
+            storage_bucket = hashlib.sha1(
+                str(user_id).encode()).hexdigest()[:8]
 
             db_file = File(
                 id=uuid.uuid4(),
@@ -139,10 +142,84 @@ class FileService:
             raise
 
     # ------------------------------------------------------------------
+    # Existing File
+    # ------------------------------------------------------------------
+
+    async def save_ml_result(
+        self,
+        paths: dict[str, Path],
+        user_id: int,
+        role_id: int,
+        parent_id: uuid.UUID | str | None = None
+    ):
+
+        # Crée un dossier par défaut si parent_id == 'root'
+        if parent_id == 'root':
+            parent_dir = await self.create_directory(
+                user_id,
+                role_id,
+                f"train_{datetime.now().strftime('%y%m%d_%H%M')}"
+            )
+            parent_id = parent_dir.id
+            physical_folder = await self.compute_physical_path(parent_dir)
+            physical_folder.mkdir(parents=True, exist_ok=True)
+        else:
+            physical_folder = None
+
+        saved_files = []
+
+        try:
+            for path in paths.values():
+                destination = physical_folder / path.name if physical_folder else path
+
+                existing = await self.file_dao.get_active_file_by_parent_and_name(
+                    path.name, user_id, role_id, parent_id
+                )
+                if existing:
+                    raise HTTPException(HTTPStatus.CONFLICT,
+                                        f"Fichier '{path.name}' existe déjà")
+
+                storage_bucket = hashlib.sha1(
+                    str(user_id).encode()).hexdigest()[:8]
+
+                db_file = File(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    parent_id=parent_id,
+                    logical_name=path.name,
+                    is_directory=False,
+                    mime_type=detect_mimetype(path),
+                    size_bytes=path.stat().st_size,
+                    status="active",
+                    storage_bucket=storage_bucket
+                )
+
+                if physical_folder:
+                    await run_in_threadpool(lambda: shutil.move(str(path), str(destination)))
+
+                await self.file_dao.add_file(db_file)
+                saved_files.append((db_file, destination))
+
+            await self.file_dao.commit()
+
+        except Exception:
+            await self.file_dao.rollback()
+            # suppression physique des fichiers déplacés
+            for _, dest in saved_files:
+                try:
+                    if dest.exists():
+                        await run_in_threadpool(dest.unlink)
+                except Exception:
+                    pass
+            raise
+
+        return "Traitement effectué avec succès"
+
+    # ------------------------------------------------------------------
     # Create directory
     # ------------------------------------------------------------------
 
-    async def create_directory(self, user_id: int, role_id: int, name: str, parent_id: uuid.UUID | None = None) -> str:
+    async def create_directory(self, user_id: int, role_id: int, name: str, parent_id: uuid.UUID | None = None) -> File:
         existing = await self.file_dao.get_active_file_by_parent_and_name(
             name, user_id, role_id, parent_id
         )
@@ -162,7 +239,7 @@ class FileService:
 
         await self.file_dao.add_file(folder)
         await self.file_dao.commit()
-        return "Dossier créé avec succès"
+        return folder
 
     # ------------------------------------------------------------------
     # List (DOSSIERS ET FICHIERS)
@@ -180,7 +257,7 @@ class FileService:
 
         folder = FolderModel(
             id=str(parent_id) if parent_id else "root",
-            name=None,
+            name="home",
             depth=depth,
             created_at=datetime.now(timezone.utc),
             modified_at=datetime.now(timezone.utc),
@@ -200,6 +277,8 @@ class FileService:
                 )
                 subfolder.name = entry.logical_name
                 subfolder.user_id = entry.user_id
+                subfolder.created_at = entry.created_at
+                subfolder.modified_at = entry.updated_at
                 folder.children.append(subfolder)
                 folder.size_bytes += subfolder.size_bytes
             else:
@@ -335,9 +414,11 @@ class FileService:
         if not file or file.status != "active":
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier introuvable")
         if file.is_directory:
-            raise HTTPException(HTTPStatus.BAD_REQUEST, "Dossier non téléchargeable")
+            raise HTTPException(HTTPStatus.BAD_REQUEST,
+                                "Dossier non téléchargeable")
         if not await self.file_exists_on_disk(file):
-            raise HTTPException(HTTPStatus.GONE, "Fichier manquant sur le disque")
+            raise HTTPException(
+                HTTPStatus.GONE, "Fichier manquant sur le disque")
         physical_path = await self.compute_physical_path(file)
         response = FileResponse(path=physical_path,
                                 filename=file.logical_name,

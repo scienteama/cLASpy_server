@@ -43,13 +43,12 @@ async def load_data_file(
     req: Request,
     claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)],
     file: UploadFile = File(...),
-    keepOnServer: bool = Form(...),
     folderId: str = Form(...)
 ):
     """
     Charge un fichier de données (.las ou .csv) et retourne des informations sur le nuage de points.
     """
-    result = await claspyML_service.upload_file(req, keepOnServer, folderId, file)
+    result = await claspyML_service.upload_file(req, folderId, file)
     return ApiResponse[PointCloudInfo](data=result)
 
 
@@ -77,5 +76,5 @@ async def run_train_async(
     Lance un entraînement avec les paramètres spécifiés.
     """
 
-    result = await claspyML_service.run_train(train_params)
+    result = await claspyML_service.run_train(req, train_params)
     return ApiResponse[str](result=result)
