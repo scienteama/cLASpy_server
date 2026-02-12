@@ -20,7 +20,7 @@ except ModuleNotFoundError as e:
     cLASpy_Classes = None
     algorithms = None
     enrich_algorithm_params = None
-    print(f"Error: {e}")
+    pass
 
 
 class ClaspyMLService:
@@ -200,9 +200,9 @@ class ClaspyMLService:
         params.input_data = str(file_path)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
 
-        worker_ready = await ModulesService.init_client_worker(params.disable_taskrunner)
-        if worker_ready:
-            task_id = worker_ready.send_task(
+        worker = await ModulesService.init_client_worker(params.disable_taskrunner)
+        if worker:
+            task_id = worker.send_task(
                 "taskrunner.tasks.ml.train_task",
                 args=[params.model_dump(), "Entraînement démarré"],
                 queue="ml")

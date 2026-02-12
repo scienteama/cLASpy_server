@@ -1,7 +1,5 @@
 from http import HTTPStatus
-from celery import Celery
 from fastapi import HTTPException
-import httpx
 import subprocess
 import sys
 import json
@@ -11,6 +9,12 @@ from importlib.metadata import distributions
 from app.core.config import get_settings
 from app.schemas.module_schema import ClaspyModule
 
+try:
+    from taskrunner.main import make_celery
+    from taskrunner.tasks import generic as generic_tasks
+    from taskrunner.manager import WorkerManager
+except ModuleNotFoundError as e:
+    pass
 
 class ModulesService:
     """Service pour la gestion des modules cLASpy."""
@@ -57,6 +61,8 @@ class ModulesService:
         """Désinstalle un plugin cLASpy à partir de son nom."""
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", plugin_name])
+            if plugin_name in sys.modules:
+                del sys.modules[plugin_name]
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Échec de la désinstallation du plugin '{plugin_name}': {e}")
 
@@ -103,25 +109,6 @@ class ModulesService:
         cls.list_claspy_modules.cache_clear()
 
     @classmethod
-    async def list_workers(cls):
-        """
-        Interroge l'API Flower pour récupérer la liste des workers et leurs stats.
-        """
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            try:
-                FLOWER_URL = "http://localhost:5556/api/workers"
-                response = await client.get(FLOWER_URL, auth=(cls.config.FLOWER_USER, cls.config.FLOWER_PWD))
-                response.raise_for_status()
-            except httpx.RequestError as e:
-                raise HTTPException(
-                    status_code=HTTPStatus.SERVICE_UNAVAILABLE,
-                    detail=f"Flower API unreachable: {str(e)}")
-            except httpx.HTTPStatusError as e:
-                raise HTTPException(status_code=response.status_code, detail=f"Flower API error: {response.text}")
-
-        return response.json()
-
-    @classmethod
     async def init_client_worker(cls, forceDisabled=False):
         modules = cls.list_claspy_modules()
 
@@ -130,17 +117,19 @@ class ModulesService:
 
         if any(mod.name == "taskrunner" and mod.enable for mod in modules):
 
-            workers = await cls.list_workers()
-
-            broker_url = f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//"
-            result_backend = f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"
-
-            worker = Celery(
-                "taskrunner",
-                broker=broker_url,
-                backend=result_backend,
+            celery = make_celery(
+                broker_url=f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//",
+                result_backend=f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"
             )
-            worker.conf.update(imports=["taskrunner.tasks.ml"])
-            return worker
+
+            workers = WorkerManager.get_worker_pids(celery)
+
+            if not workers:
+                raise HTTPException(
+                    status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                    detail="Aucun worker n'est actuellement actif."
+                )
+
+            return celery
         else:
             return None
