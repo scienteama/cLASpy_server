@@ -44,6 +44,7 @@ def get_module_service() -> ModulesService:
 def get_config_service() -> ConfigService:
     return _config_service
 
+
 def get_ws_service() -> WebSocketService:
     return _ws_service
 

@@ -2,7 +2,7 @@ from typing import Optional
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import case, select
 from app.models.file import File
 
 
@@ -52,7 +52,15 @@ class FileDAO:
         if role_id != 1:  # non-admin
             stmt = stmt.where(File.user_id == user_id)
 
-        stmt = stmt.order_by(File.is_directory.desc(), File.logical_name)
+        stmt = stmt.order_by(
+            File.is_directory.asc(),
+            case(
+                (File.mime_type == "application/las", 0),
+                (File.mime_type == "application/model", 1),
+                else_=2
+            ),
+            File.logical_name.asc()
+        )
         result = await self.db.execute(stmt)
         return result.scalars().all()
 

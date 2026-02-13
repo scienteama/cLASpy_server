@@ -5,6 +5,7 @@ from fastapi import WebSocket
 
 from app.utils.auth_utils import verify_token
 
+
 class WebSocketService:
     def __init__(self):
         self.active_connections: Dict[int, Set[WebSocket]] = defaultdict(set)
@@ -27,7 +28,7 @@ class WebSocketService:
             for conn in connections:
                 try:
                     await conn.send_text(message)
-                except:
+                except BaseException:
                     disconnected.append(conn)
         for ws in disconnected:
             self.disconnect(ws)
@@ -59,7 +60,7 @@ class WebSocketService:
             except Exception:
                 self.disconnect(websocket)
                 break
-    
+
     def receive_text(self, websocket: WebSocket) -> str:
         return websocket.receive_text()
 

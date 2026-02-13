@@ -16,6 +16,7 @@ try:
 except ModuleNotFoundError as e:
     pass
 
+
 class ModulesService:
     """Service pour la gestion des modules cLASpy."""
 

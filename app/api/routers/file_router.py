@@ -1,5 +1,6 @@
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, List
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Body, Query
 from fastapi.params import Form
 from fastapi.responses import FileResponse
@@ -81,7 +82,6 @@ async def get_files(
 # Remove file / folder
 # ------------------------
 
-
 @router.delete("/remove/{item_id}", response_model=ApiResponse[str])
 async def remove_file_or_folder(
     req: Request,
@@ -98,6 +98,37 @@ async def remove_file_or_folder(
 
 
 # ------------------------
+# Remove files
+# ------------------------
+
+@router.post("/remove-multiple", response_model=ApiResponse[str])
+async def remove_items(
+    req: Request,
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    ids: List[uuid.UUID] = Body(...),
+):
+    user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
+
+    try:
+        for item_id in ids:
+            await file_service.delete_path(
+                user_id,
+                role_id,
+                item_id,
+                auto_commit=False
+            )
+
+        await file_service.file_dao.commit()
+
+        return ApiResponse[str](data=f"{len(ids)} élément(s) supprimé(s)")
+
+    except Exception:
+        await file_service.file_dao.rollback()
+        raise
+
+
+# -----------------------
 # Rename file / folder
 # ------------------------
 

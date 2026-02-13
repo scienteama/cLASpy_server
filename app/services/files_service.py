@@ -307,7 +307,7 @@ class FileService:
     # Soft delete
     # ------------------------------------------------------------------
 
-    async def delete_path(self, user_id: int, role_id: int, item_id: uuid.UUID) -> str:
+    async def delete_path(self, user_id: int, role_id: int, item_id: uuid.UUID, auto_commit: bool = True) -> str:
         root = await self.file_dao.get_file(item_id)
         if not root:
             raise HTTPException(HTTPStatus.NOT_FOUND, "Objet introuvable")
@@ -331,11 +331,13 @@ class FileService:
             for node in nodes:
                 await self.file_dao.soft_delete(node)
 
-            await self.file_dao.commit()
+            if auto_commit:
+                await self.file_dao.commit()
             return "Objet supprimé avec succès"
 
         except Exception:
-            await self.file_dao.rollback()
+            if auto_commit:
+                await self.file_dao.rollback()
             raise
 
     # ------------------------------------------------------------------

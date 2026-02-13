@@ -13,6 +13,7 @@ SERVICE_ROUTES = {
     "/api/events/celery",
 }
 
+
 class AuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app):
@@ -26,7 +27,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if request.url.path in PUBLIC_ROUTES:
             return await call_next(request)
-        
+
         # ─────────────────────────────────────────────
         # SERVICES
         # ─────────────────────────────────────────────
@@ -40,7 +41,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
             request.state.service = "celery-worker"
             return await call_next(request)
-        
+
         # ─────────────────────────────────────────────
         # USER AUTH
         # ─────────────────────────────────────────────
