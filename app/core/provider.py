@@ -10,6 +10,7 @@ from app.services.files_service import FileService
 from app.services.modules_service import ModulesService
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.config_service import ConfigService
+from app.services.ws_service import WebSocketService
 
 # ------------------------------------------------------------------
 # DAO PROVIDERS
@@ -33,6 +34,7 @@ def get_file_dao(
 # ------------------------------------------------------------------
 _module_service = ModulesService()
 _config_service = ConfigService()
+_ws_service = WebSocketService()
 
 
 def get_module_service() -> ModulesService:
@@ -41,6 +43,9 @@ def get_module_service() -> ModulesService:
 
 def get_config_service() -> ConfigService:
     return _config_service
+
+def get_ws_service() -> WebSocketService:
+    return _ws_service
 
 # ------------------------------------------------------------------
 # DEPENDENCIES SERVICES

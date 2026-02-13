@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, Any, List
 from fastapi import APIRouter, Body, Depends, File, Request, UploadFile
 from fastapi.params import Form
 from app.core.provider import get_claspyml_service
@@ -66,7 +66,7 @@ async def load_existing_file(
     return ApiResponse[PointCloudInfo](data=result)
 
 
-@router.post('/run-train', response_model=ApiResponse[str])
+@router.post('/run-train', response_model=ApiResponse[str | dict[str, Any]])
 async def run_train_async(
     req: Request,
     claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)],
@@ -77,4 +77,4 @@ async def run_train_async(
     """
 
     result = await claspyML_service.run_train(req, train_params)
-    return ApiResponse[str](result=result)
+    return ApiResponse[str | dict[str, Any]](data=result)

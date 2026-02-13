@@ -213,7 +213,13 @@ class FileService:
                     pass
             raise
 
-        return "Traitement effectué avec succès"
+        result = {
+            "saved_files": [str(f.logical_name) for f, _ in saved_files],
+            "parent_id": str(parent_id),
+            "path": str(physical_folder) if physical_folder else None
+        }
+
+        return result
 
     # ------------------------------------------------------------------
     # Create directory
