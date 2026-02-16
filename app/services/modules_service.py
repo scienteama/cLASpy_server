@@ -1,5 +1,3 @@
-from http import HTTPStatus
-from fastapi import HTTPException
 import subprocess
 import sys
 import json
@@ -8,14 +6,6 @@ from functools import lru_cache
 from importlib.metadata import distributions
 from app.core.config import get_settings
 from app.schemas.module_schema import ClaspyModule
-
-try:
-    from taskrunner.main import make_celery
-    from taskrunner.tasks import generic as generic_tasks
-    from taskrunner.manager import WorkerManager
-except ModuleNotFoundError as e:
-    pass
-
 
 class ModulesService:
     """Service pour la gestion des modules cLASpy."""
@@ -108,29 +98,3 @@ class ModulesService:
     def invalidate_cache(cls):
         """Purge le cache des modules"""
         cls.list_claspy_modules.cache_clear()
-
-    @classmethod
-    async def init_client_worker(cls, forceDisabled=False):
-        modules = cls.list_claspy_modules()
-
-        if forceDisabled:
-            return None
-
-        if any(mod.name == "taskrunner" and mod.enable for mod in modules):
-
-            celery = make_celery(
-                broker_url=f"amqp://{cls.config.RABBITMQ_DEFAULT_USER}:{cls.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//",
-                result_backend=f"redis://:{cls.config.REDIS_PASSWORD}@localhost:6379/0"
-            )
-
-            workers = WorkerManager.get_worker_pids(celery)
-
-            if not workers:
-                raise HTTPException(
-                    status_code=HTTPStatus.SERVICE_UNAVAILABLE,
-                    detail="Aucun worker n'est actuellement actif."
-                )
-
-            return celery
-        else:
-            return None

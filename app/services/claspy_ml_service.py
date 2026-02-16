@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request, UploadFile
 from app.core.config import Settings, get_settings
 from app.schemas.train_schema import PointCloudInfo, TrainParameters
 from app.services.files_service import FileService
-from app.services.modules_service import ModulesService
+from app.services.worker_service import WorkerService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
 
 try:
@@ -28,7 +28,7 @@ class ClaspyMLService:
     TODO : Renseigner la doc.
     """
 
-    def __init__(self, file_service: FileService):
+    def __init__(self, file_service: FileService, worker_service: WorkerService):
         if ClaspyTrainer is not None:
             self.core_version = cLASpy_Core_version
             self.claspy_classes = cLASpy_Classes
@@ -42,6 +42,7 @@ class ClaspyMLService:
             self.claspy_t = cLASpy_T
 
         self.file_service = file_service
+        self.worker_service = worker_service
         self.config: Settings = get_settings()
 
     def get_core_version(self) -> str:
@@ -199,15 +200,22 @@ class ClaspyMLService:
 
         params.input_data = str(file_path)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
-
-        worker = await ModulesService.init_client_worker(params.disable_taskrunner)
-        if worker:
-            task_id = worker.send_task(
+        
+        state = await self.worker_service.get_worker_state(params.no_worker)
+        if state.is_enabled and state.has_workers:
+            task_id = state.celery.send_task(
                 "taskrunner.tasks.ml.train_task",
                 args=[params.model_dump(), "Entraînement démarré"],
                 queue="ml")
 
             return f"Tâche n'° {task_id} ajoutée avec succès."
-        else:
+        
+        elif params.no_worker:
             result = self.claspy_t.train(arguments=params)
             return await self.file_service.save_ml_result(result, params.user_id, params.role_id, params.folder_id)
+        else : 
+            raise HTTPException(
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                detail="Aucun worker n'est actuellement actif."
+            )
+           

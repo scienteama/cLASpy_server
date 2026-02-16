@@ -10,6 +10,7 @@ from app.services.files_service import FileService
 from app.services.modules_service import ModulesService
 from app.services.claspy_ml_service import ClaspyMLService
 from app.services.config_service import ConfigService
+from app.services.worker_service import WorkerService
 from app.services.ws_service import WebSocketService
 
 # ------------------------------------------------------------------
@@ -72,7 +73,15 @@ def get_file_service(
     return FileService(user_service, file_dao)
 
 
+def get_worker_service(
+    m_service: Annotated[ModulesService, Depends(get_module_service)]
+) -> WorkerService:
+    return WorkerService(m_service)
+
+
 def get_claspyml_service(
-    file_service: Annotated[FileService, Depends(get_file_service)]
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    m_service: Annotated[WorkerService, Depends(get_worker_service)]
 ) -> ClaspyMLService:
-    return ClaspyMLService(file_service)
+    return ClaspyMLService(file_service, m_service)
+

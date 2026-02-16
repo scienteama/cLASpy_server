@@ -1,9 +1,10 @@
-from typing import Annotated, Any, List
+from typing import Annotated, List
 from fastapi import APIRouter, Depends
-from app.core.provider import get_module_service
-from app.schemas.module_schema import ClaspyModule
+from app.core.provider import get_module_service, get_worker_service
+from app.schemas.module_schema import CeleryWorker, ClaspyModule
 from app.schemas.response_schema import ApiResponse
 from app.services.modules_service import ModulesService
+from app.services.worker_service import WorkerService
 
 router = APIRouter()
 
@@ -28,7 +29,15 @@ def get_i_claspy_modules(module_service: Annotated[ModulesService, Depends(get_m
     return ApiResponse[List[ClaspyModule]](data=claspy_modules)
 
 
-@router.get("/workers", response_model=ApiResponse[Any])
-async def status_worker(module_service: Annotated[ModulesService, Depends(get_module_service)]):
-    workers = await module_service.list_workers()
-    return ApiResponse[Any](data=workers)
+@router.get("/workers", response_model=ApiResponse[CeleryWorker])
+async def status_worker(worker_service: Annotated[WorkerService, Depends(get_worker_service)]):
+    state =  await worker_service.get_worker_state()
+    workers_list = [
+        {"name": name, "pid": pid}
+        for name, pid in state.workers.items()
+    ]
+    result = CeleryWorker(
+        enabled= state.is_enabled,
+        workers=workers_list
+    )
+    return ApiResponse[CeleryWorker](data=result)

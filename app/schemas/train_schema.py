@@ -1,9 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, RootModel
-
-from app.schemas.sklearn_schema import AlgoParamsResponse
-
+from pydantic import BaseModel, Field
 
 class PointCloudInfo(BaseModel):
     file_name: str = Field(..., alias="name")
@@ -39,7 +36,7 @@ class TrainParameters(BaseModel):
     config: Optional[Any] = None
     grid_search: bool = False
     param_grid: Any = None
-    disable_taskrunner: Optional[bool] = Field(default=False, alias="disableTaskRunner")
+    no_worker: Optional[bool] = Field(default=False, alias="noWorker")
     is_from_api: bool = True
     user_id: Optional[int] = None
     role_id: Optional[int] = None
