@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
+
 class PointCloudInfo(BaseModel):
     file_name: str = Field(..., alias="name")
     file_type: Literal['.csv', '.las'] = Field(..., alias="type")

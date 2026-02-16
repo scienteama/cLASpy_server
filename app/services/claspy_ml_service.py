@@ -200,7 +200,7 @@ class ClaspyMLService:
 
         params.input_data = str(file_path)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
-        
+
         state = await self.worker_service.get_worker_state(params.no_worker)
         if state.is_enabled and state.has_workers:
             task_id = state.celery.send_task(
@@ -209,13 +209,12 @@ class ClaspyMLService:
                 queue="ml")
 
             return f"Tâche n'° {task_id} ajoutée avec succès."
-        
+
         elif params.no_worker:
             result = self.claspy_t.train(arguments=params)
             return await self.file_service.save_ml_result(result, params.user_id, params.role_id, params.folder_id)
-        else : 
+        else:
             raise HTTPException(
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail="Aucun worker n'est actuellement actif."
             )
-           

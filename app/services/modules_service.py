@@ -7,6 +7,7 @@ from importlib.metadata import distributions
 from app.core.config import get_settings
 from app.schemas.module_schema import ClaspyModule
 
+
 class ModulesService:
     """Service pour la gestion des modules cLASpy."""
 

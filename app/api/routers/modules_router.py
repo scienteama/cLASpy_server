@@ -31,13 +31,13 @@ def get_i_claspy_modules(module_service: Annotated[ModulesService, Depends(get_m
 
 @router.get("/workers", response_model=ApiResponse[CeleryWorker])
 async def status_worker(worker_service: Annotated[WorkerService, Depends(get_worker_service)]):
-    state =  await worker_service.get_worker_state()
+    state = await worker_service.get_worker_state()
     workers_list = [
         {"name": name, "pid": pid}
         for name, pid in state.workers.items()
     ]
     result = CeleryWorker(
-        enabled= state.is_enabled,
+        enabled=state.is_enabled,
         workers=workers_list
     )
     return ApiResponse[CeleryWorker](data=result)

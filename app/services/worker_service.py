@@ -8,6 +8,7 @@ try:
 except ModuleNotFoundError as e:
     pass
 
+
 class WorkerService:
 
     def __init__(self, m_service: ModulesService):
