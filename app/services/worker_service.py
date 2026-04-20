@@ -1,6 +1,8 @@
+import time
 from app.core.config import get_settings
 from app.models.celery import WorkerState
 from app.services.modules_service import ModulesService
+from kombu.exceptions import OperationalError
 
 try:
     from taskrunner.main import make_celery
@@ -35,9 +37,41 @@ class WorkerService:
             result_backend=f"redis://:{self.config.REDIS_PASSWORD}@localhost:6379/0"
         )
 
-        workers = WorkerManager.get_worker_pids(celery) or {}
+        workers = await self._safe_get_workers(celery)
 
         return WorkerState(
             celery=celery,
             workers=workers
         )
+
+    async def _safe_get_workers(
+        self,
+        celery,
+        retries: int = 1,
+        timeout: float = 1.5,
+        backoff: float = 0.5,
+    ):
+        """
+        Récupère les workers avec retry + timeout.
+        """
+
+        for attempt in range(retries):
+            try:
+                # ping pour vérifier disponibilité
+                celery.control.ping(timeout=timeout)
+
+                # si ping OK on récupère le worker
+                return WorkerManager.get_worker_pids(celery) or {}
+
+            except OperationalError:
+
+                if attempt == retries - 1:
+                    return {}
+
+            except Exception:
+                if attempt == retries - 1:
+                    return {}
+
+            time.sleep(backoff * (attempt + 1))
+
+        return {}

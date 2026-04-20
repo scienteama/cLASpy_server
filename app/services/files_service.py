@@ -2,7 +2,6 @@ from http import HTTPStatus
 import os
 from pathlib import Path
 import shutil
-from typing import List
 import uuid
 import hashlib
 from datetime import datetime, timezone
@@ -10,11 +9,11 @@ from fastapi import UploadFile, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from app.dao.file_dao import FileDAO
-from app.schemas.file_schema import FileModel, FolderModel
+from app.schemas.file_schema import FileModel, FileType, FolderModel
 from app.models.file import File
 from app.core.config import get_settings, Settings
 from app.services.users_service import UserService
-from app.utils.file_utils import detect_mimetype
+from app.utils.file_utils import detect_mimetype, match_file_type
 
 
 class FileService:
@@ -256,9 +255,10 @@ class FileService:
         user_id: int,
         role_id: int,
         parent_id: uuid.UUID | None = None,
-        depth: int = 0
+        depth: int = 0,
+        file_type: FileType = "all"
     ) -> FolderModel:
-
+        
         entries = await self.file_dao.list_children(user_id, role_id, parent_id)
 
         folder = FolderModel(
@@ -277,9 +277,12 @@ class FileService:
                 if not await self.file_exists_on_disk(entry):
                     continue
 
+                if not match_file_type(entry, file_type):
+                    continue
+
             if entry.is_directory:
                 subfolder = await self.list_directory(
-                    user_id, role_id, entry.id, depth + 1
+                    user_id, role_id, entry.id, depth + 1, file_type=file_type
                 )
                 subfolder.name = entry.logical_name
                 subfolder.user_id = entry.user_id

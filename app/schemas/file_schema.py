@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -29,3 +29,5 @@ class FolderModel(BaseModel):
 
 # pour références récursives
 FolderModel.model_rebuild()
+
+FileType = Literal['all', 'model', 'las']

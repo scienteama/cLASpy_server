@@ -4,6 +4,9 @@ import os
 import uuid
 from pathlib import Path as PathLib
 
+from app.models.file import File
+from app.schemas.file_schema import FileType
+
 
 def detect_mimetype(file_path: PathLib, content_type: str | None = None) -> str:
     """
@@ -114,3 +117,12 @@ def find_duplicate_file(file_bytes: bytes, folder_path: PathLib) -> PathLib | No
                 return existing_file
 
     return None
+
+def match_file_type(entry: File, file_type: FileType) -> bool:
+    if file_type == "all":
+        return True
+    if file_type == "model":
+        return entry.logical_name.endswith(".model")
+    if file_type == "las":
+        return entry.logical_name.endswith(".las")
+    return True

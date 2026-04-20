@@ -62,7 +62,6 @@ async def download_file(
 # List directory
 # ------------------------
 
-
 @router.get("/list", response_model=ApiResponse[FolderModel])
 async def get_files(
     req: Request,
@@ -75,6 +74,44 @@ async def get_files(
     user_id = int(req.state.user.id)
     role_id = int(req.state.user.role_id)
     res = await file_service.list_directory(user_id, role_id, parent_id=parent_id)
+    return ApiResponse[FolderModel](data=res)
+
+
+# ------------------------
+# List models
+# ------------------------
+
+@router.get("/models", response_model=ApiResponse[FolderModel])
+async def get_models(
+    req: Request,
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    parent_id: UUID | None = Query(None, description="ID du dossier parent"),
+):
+    """
+    Récupère l'arborescence de fichiers .model à partir du dossier parent.
+    """
+    user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.list_directory(user_id, role_id, parent_id=parent_id, file_type="model")
+    return ApiResponse[FolderModel](data=res)
+
+
+# ------------------------
+# List LAS files
+# ------------------------
+
+@router.get("/las", response_model=ApiResponse[FolderModel])
+async def get_las_files(
+    req: Request,
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    parent_id: UUID | None = Query(None, description="ID du dossier parent"),
+):
+    """
+    Récupère l'arborescence de fichiers .las à partir du dossier parent.
+    """
+    user_id = int(req.state.user.id)
+    role_id = int(req.state.user.role_id)
+    res = await file_service.list_directory(user_id, role_id, parent_id=parent_id, file_type="las")
     return ApiResponse[FolderModel](data=res)
 
 
