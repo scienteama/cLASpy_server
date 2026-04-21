@@ -71,15 +71,15 @@ class ModulesService:
 
         # Liste des packages installés
         installed_plugins = {
-            dist.metadata['Name'].lower(): dist.version
+            dist.metadata['Name'].lower().replace("_", "-"): dist.version
             for dist in distributions()
         }
 
         return [
             ClaspyModule(
                 name=plugin["name"],
-                version=installed_plugins.get(plugin["name"].lower()),
-                enable=plugin["name"].lower() in installed_plugins,
+                version=installed_plugins.get(plugin["name"].lower().replace("_", "-")),
+                enable=plugin["name"].lower().replace("_", "-") in installed_plugins,
                 description=plugin.get("description"),
                 tooltip=plugin.get("tooltip"),
             )
