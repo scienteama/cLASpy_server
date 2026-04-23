@@ -15,6 +15,18 @@ class PointCloudInfo(BaseModel):
         validate_by_name = True
 
 
+class ModelInfo(BaseModel):
+    model_name: str = Field(..., alias="name")
+    scaler: str
+    pca: Optional[str] = None
+    feat_list: Optional[List[str]] = Field(None, alias="featuresList")
+    algo_name: str = Field(..., alias="algorithm")
+    parameters: Optional[List[str]] = None
+
+    class Config:
+        validate_by_name = True
+
+
 class TrainParameters(BaseModel):
     file_id: str = Field(..., alias="fileId")
     input_data: Optional[str] = None

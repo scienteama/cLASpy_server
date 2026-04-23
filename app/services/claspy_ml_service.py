@@ -3,8 +3,11 @@ import inspect
 from pathlib import Path
 from typing import List, Optional, Dict
 from fastapi import HTTPException, Request, UploadFile
+import joblib
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 from app.core.config import Settings, get_settings
-from app.schemas.train_schema import PointCloudInfo, TrainParameters
+from app.schemas.train_schema import ModelInfo, PointCloudInfo, TrainParameters
 from app.services.files_service import FileService
 from app.services.worker_service import WorkerService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
@@ -218,3 +221,64 @@ class ClaspyMLService:
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 detail="Aucun worker n'est actuellement actif."
             )
+
+    async def get_model_info(self, model_id: str) -> ModelInfo:
+        """
+        Charge un modèle de classification dans l'interface.
+         - Vérifie l'extension du fichier
+         - Récupère les informations du modèle (algorithme, scaler, PCA, paramètres)
+         - Met à jour l'interface avec les informations du modèle
+        """
+
+        model_file = await self.file_service.get_file_by_id(model_id)
+        model_path = await self.file_service.compute_physical_path(model_file)
+
+        try:
+            loaded_model = joblib.load(model_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail=f"Erreur lors du chargement du modèle : {str(e)}"
+            )
+
+        # Retrieve algorithm, model
+        algorithm = loaded_model['algorithm']
+        model = loaded_model['model']
+
+        # Check if model created by GridSearchCV or Pipeline
+        if isinstance(model, GridSearchCV):
+            model = model.best_estimator_
+        elif isinstance(model, Pipeline):
+            pass
+        else:
+            raise ValueError('Model load failed! Model must be GridSearchCV or Pipeline!')
+
+        # Scaler
+        scaler = model['scaler']
+
+        # PCA
+        try:
+            if model['pca']:
+                pca = model['pca'].get_params()['n_components']
+                pca = str(pca) + ' components'
+            else:
+                pca = 'No PCA applied'
+        except KeyError:
+            pca = 'No PCA applied'
+
+        features = loaded_model['feature_names']
+
+        # Parameters
+        algo_parameters = list[str]()
+        dict_algo_param = model['classifier'].get_params()
+        for key in dict_algo_param:
+            algo_parameters.append(str(key) + ': ' + str(dict_algo_param[key]) + '\n')
+
+        return ModelInfo(
+            model_name=model_file.logical_name,
+            scaler=str(scaler),
+            pca=pca,
+            feat_list=features,
+            algo_name=algorithm,
+            parameters=algo_parameters
+        )

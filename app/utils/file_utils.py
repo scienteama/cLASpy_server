@@ -118,6 +118,7 @@ def find_duplicate_file(file_bytes: bytes, folder_path: PathLib) -> PathLib | No
 
     return None
 
+
 def match_file_type(entry: File, file_type: FileType) -> bool:
     if file_type == "all":
         return True

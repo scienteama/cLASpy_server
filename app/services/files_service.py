@@ -103,15 +103,19 @@ class FileService:
             storage_bucket = hashlib.sha1(
                 str(user_id).encode()).hexdigest()[:8]
 
+            ext = os.path.splitext(file.filename)[1].lower()
+
             db_file = File(
                 id=uuid.uuid4(),
                 user_id=user_id,
                 parent_id=parent_id,
                 logical_name=file.filename,
                 is_directory=False,
-                mime_type="application/las"
-                if os.path.splitext(file.filename)[1] == ".las"
-                else file.content_type,
+                mime_type=(
+                    "application/las" if ext == ".las"
+                    else "application/model" if ext == ".model"
+                    else file.content_type
+                ),
                 size_bytes=temp_path.stat().st_size,
                 status="active",
                 storage_bucket=storage_bucket
@@ -258,7 +262,7 @@ class FileService:
         depth: int = 0,
         file_type: FileType = "all"
     ) -> FolderModel:
-        
+
         entries = await self.file_dao.list_children(user_id, role_id, parent_id)
 
         folder = FolderModel(

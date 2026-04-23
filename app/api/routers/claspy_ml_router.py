@@ -4,7 +4,7 @@ from fastapi.params import Form
 from app.core.provider import get_claspyml_service
 from app.schemas.response_schema import ApiResponse
 from app.schemas.sklearn_schema import AlgoParam, AlgoParamsResponse
-from app.schemas.train_schema import PointCloudInfo, TrainParameters
+from app.schemas.train_schema import ModelInfo, PointCloudInfo, TrainParameters
 from app.services.claspy_ml_service import ClaspyMLService
 
 router = APIRouter()
@@ -78,3 +78,16 @@ async def run_train_async(
 
     result = await claspyML_service.run_train(req, train_params)
     return ApiResponse[str | dict[str, Any]](data=result)
+
+
+@router.get('/models/{model_id}', response_model=ApiResponse[ModelInfo])
+async def get_model_info(
+    req: Request,
+    model_id: str,
+    claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)]
+):
+    """
+    Récupère les informations d'un modèle spécifique.
+    """
+    result = await claspyML_service.get_model_info(model_id)
+    return ApiResponse[ModelInfo](data=result)
