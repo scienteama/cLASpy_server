@@ -53,27 +53,39 @@ class WebSocketService:
                 self.disconnect(conn)
 
     async def send_heartbeat(self, websocket: WebSocket):
-        while True:
-            try:
+        try:
+            while True:
                 await asyncio.sleep(self.heartbeat_interval)
-                await websocket.send_json({"type": "ping"})
-            except Exception:
-                self.disconnect(websocket)
-                break
+                try:
+                    await websocket.send_json({"type": "ping"})
+                except Exception as e:
+                    print(f"Heartbeat error, disconnecting: {str(e)}")
+                    self.disconnect(websocket)
+                    break
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            print(f"Unexpected heartbeat error: {str(e)}")
+            self.disconnect(websocket)
 
-    def receive_text(self, websocket: WebSocket) -> str:
-        return websocket.receive_text()
+    async def receive_text(self, websocket: WebSocket) -> str:
+        return await websocket.receive_text()
 
     async def authenticate_and_connect(self, websocket: WebSocket):
         try:
             token = websocket.cookies.get("token") or websocket.headers.get("Authorization")
-            if token is not None:
-                user_data = verify_token(token)
-                await self.connect(websocket, user_data.id)
-                return True
-            else:
+            if token is None:
                 await websocket.close(code=4001)
                 return False
+            
+            user_data = verify_token(token)
+            
+            await self.connect(websocket, user_data.id)
+            return True
         except Exception as e:
-            await websocket.close(code=4001)
+            print(f"Authentication error: {str(e)}")
+            try:
+                await websocket.close(code=4001)
+            except Exception:
+                pass
             return False

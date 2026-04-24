@@ -64,7 +64,9 @@ async def websocket_endpoint(
     websocket: WebSocket,
     ws_service: Annotated[WebSocketService, Depends(get_ws_service)]
 ):
-    await ws_service.authenticate_and_connect(websocket)
+    if not await ws_service.authenticate_and_connect(websocket):
+        print("Authentication failed, WebSocket closed")
+        return
 
     for user_id, connections in ws_service.active_connections.items():
         if websocket in connections:
@@ -72,9 +74,17 @@ async def websocket_endpoint(
 
     try:
         while True:
-            message = await ws_service.receive_text(websocket)
-            print(f"Received message: {message}")
+            try:
+                message = await ws_service.receive_text(websocket)
+                print(f"Received message: {message}")
+            except RuntimeError as e:
+                # WebSocket closed or disconnected
+                print(f"WebSocket error: {str(e)}")
+                break
 
     except WebSocketDisconnect:
         ws_service.disconnect(websocket)
         print("Client disconnected")
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        ws_service.disconnect(websocket)
