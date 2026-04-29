@@ -4,6 +4,7 @@ from app.dao.user_dao import UserDAO
 from app.models.user import User
 from app.schemas.role_schema import UserRole
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
+from app.services.files_service import FileService
 from app.utils.auth_utils import hash_password, raise_auth_exception
 from typing import List
 from datetime import datetime, timezone
@@ -14,8 +15,9 @@ class UserService:
     Service de gestion des utilisateurs.
     """
 
-    def __init__(self, user_dao: UserDAO):
+    def __init__(self, user_dao: UserDAO, file_service: FileService):
         self.userDAO = user_dao
+        self.file_service = file_service
 
     # --- CREATE ---
     async def create_user(self, user_data: UserIn) -> UserOut:
@@ -96,12 +98,26 @@ class UserService:
     # --- DELETE ---
 
     async def delete_user_by_id(self, user_id: int) -> str:
-        """
-        Supprime un utilisateur par ID de manière atomique.
-        """
         user = await self.get_user_by_id(user_id)
-        await self.userDAO.delete(user.id)
-        return f"Utilisateur supprimé avec succès."
+
+        try:
+            # soft delete
+            files = await self.file_service.delete_user_workspace(user, auto_commit=False)
+
+            # delete user
+            await self.userDAO.delete(user.id)
+
+            # commit DB
+            await self.userDAO.db.commit()
+
+        except Exception:
+            await self.userDAO.db.rollback()
+            raise
+
+        # move to trash
+        await self.file_service.move_files_to_trash(files)
+
+        return "Utilisateur supprimé avec succès"
 
     async def user_is_admin(self, user_id: int) -> bool:
         try:

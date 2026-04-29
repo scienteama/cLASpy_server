@@ -12,14 +12,15 @@ from app.dao.file_dao import FileDAO
 from app.schemas.file_schema import FileModel, FileType, FolderModel
 from app.models.file import File
 from app.core.config import get_settings, Settings
-from app.services.users_service import UserService
+from app.schemas.user_schema import UserOut
+from app.services.ws_service import SocketIOService
 from app.utils.file_utils import detect_mimetype, match_file_type
 
 
 class FileService:
-    def __init__(self, user_service: UserService, file_dao: FileDAO):
-        self.user_service = user_service
+    def __init__(self, file_dao: FileDAO, socket: SocketIOService):
         self.file_dao = file_dao
+        self.ws = socket
         self.config: Settings = get_settings()
 
         self.storage_root = Path(self.config.UPLOAD_DIR)
@@ -31,6 +32,9 @@ class FileService:
     # ------------------------------------------------------------------
     # Utilities
     # ------------------------------------------------------------------
+
+    async def get_user_workspace_id(self, user_id: int) -> str:
+        return await self.file_dao.get_storage_bucket_by_user_id(user_id)
 
     async def compute_physical_path(self, file: File) -> Path:
         parts = await self.file_dao.get_full_path_parts(file.id)
@@ -45,6 +49,19 @@ class FileService:
     async def compute_trash_path(self, file: File) -> Path:
         physical = await self.compute_physical_path(file)
         return self.trash_root / physical.relative_to(self.storage_root)
+
+    async def move_files_to_trash(self, files: list[File]):
+        for file in files:
+            try:
+                physical = await self.compute_physical_path(file)
+                trash_path = await self.compute_trash_path(file)
+
+                trash_path.parent.mkdir(parents=True, exist_ok=True)
+
+                await self.safe_move(physical, trash_path)
+
+            except Exception as e:
+                raise HTTPException(500, e)
 
     async def file_exists_on_disk(self, file: File) -> bool:
         path = await self.compute_physical_path(file)
@@ -346,6 +363,24 @@ class FileService:
             if auto_commit:
                 await self.file_dao.rollback()
             raise
+
+    async def delete_user_workspace(self, user: UserOut, auto_commit: bool = True) -> list[File]:
+        workspace_id = await self.get_user_workspace_id(user.id)
+        if not workspace_id:
+            return []
+
+        files = await self.file_dao.get_user_workspace_files(workspace_id)
+        if not files:
+            return []
+
+        # DB soft delete
+        for file in files:
+            await self.file_dao.soft_delete_workspace_files(user.id)
+
+        if auto_commit:
+            await self.file_dao.commit()
+
+        return files
 
     # ------------------------------------------------------------------
     # Reactivate

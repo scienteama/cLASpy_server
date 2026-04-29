@@ -11,7 +11,7 @@ class File(Base):
     __tablename__ = "files"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=True)
 
     parent_id = Column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     parent = relationship("File", remote_side=[id])

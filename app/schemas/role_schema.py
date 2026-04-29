@@ -8,8 +8,19 @@ class Role(BaseModel):
     id: int
     name: str
     description: Optional[str]
+    max_space: Optional[int] = Field(..., alias="maxSpace")
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        validate_by_name = True
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str]
+    description: Optional[str]
+    max_space: Optional[int] = Field(..., alias="maxSpace")
 
 
 class UserRole(int, Enum):

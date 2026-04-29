@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -43,12 +44,6 @@ class Settings(BaseSettings):
     @property
     def PROJECT_ROOT(self) -> Path:
         return Path(__file__).resolve().parents[2]
-
-    @property
-    def DATABASE_URL(self) -> str:
-        if self.db_user and self.db_password and self.db_name:
-            return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        return "sqlite+aiosqlite:///./dev.db"
 
     def get_public_settings(self) -> dict:
         """Retourne les paramètres publics, excluant les champs sensibles."""

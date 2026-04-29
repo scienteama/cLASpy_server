@@ -2,8 +2,9 @@ from typing import Optional
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import case, select
+from sqlalchemy import case, select, update
 from app.models.file import File
+from app.models.user import UserStorage
 
 
 class FileDAO:
@@ -16,6 +17,9 @@ class FileDAO:
 
     async def add_file(self, file: File):
         """Ajoute un fichier dans la session db."""
+        # result = await self.db.execute(select(UserStorage).where(UserStorage.user_id == user_id))
+        # uStorage: UserStorage | None = result.scalar_one_or_none()
+
         self.db.add(file)
         await self.db.flush()
 
@@ -32,10 +36,20 @@ class FileDAO:
     # Getters
     # ------------------------
 
+    async def get_storage_bucket_by_user_id(self, user_id) -> str:
+        req = select(File.storage_bucket).where(File.user_id == user_id)
+        result = await self.db.execute(req)
+        return result.scalars().first()
+
     async def get_file(self, file_id: uuid.UUID) -> Optional[File]:
         stmt = select(File).where(File.id == file_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_user_workspace_files(self, workspace_id: str) -> list[File]:
+        stmt = (select(File).where(File.storage_bucket == workspace_id, File.status == 'active'))
+        result = await self.db.execute(stmt)
+        return result.scalars().unique().all()
 
     async def list_children(
         self,
@@ -100,7 +114,20 @@ class FileDAO:
         """Marque un fichier/dossier comme supprimé (soft delete)."""
         file.status = "deleted"
         file.updated_at = datetime.now(timezone.utc)
+        file.user_id = None
         await self.db.flush()
+
+    async def soft_delete_workspace_files(self, user_id: int):
+        stmt = (
+            update(File)
+            .where(File.user_id == user_id)
+            .values(
+                status="deleted",
+                user_id=None,
+                updated_at=datetime.now(timezone.utc)
+            )
+        )
+        await self.db.execute(stmt)
 
     async def reactivate(self, file: File):
         """Réactive un fichier si status=deleted."""
