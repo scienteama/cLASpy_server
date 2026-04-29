@@ -57,6 +57,7 @@ def get_config_service() -> ConfigService:
 def get_ws_service() -> SocketIOService:
     return _ws_service
 
+
 # ------------------------------------------------------------------
 # DEPENDENCIES SERVICES
 # ------------------------------------------------------------------
@@ -64,14 +65,14 @@ def get_ws_service() -> SocketIOService:
 
 def get_file_service(
     file_dao: Annotated[FileDAO, Depends(get_file_dao)],
-    ws: Annotated[SocketIOService, Depends(get_ws_service)]
+    ws: Annotated[SocketIOService, Depends(get_ws_service)],
 ) -> FileService:
     return FileService(file_dao, ws)
 
 
 def get_user_service(
     user_dao: Annotated[UserDAO, Depends(get_user_dao)],
-    file_service: Annotated[FileService, Depends(get_file_service)]
+    file_service: Annotated[FileService, Depends(get_file_service)],
 ) -> UserService:
     return UserService(user_dao, file_service)
 
@@ -89,13 +90,13 @@ def get_auth_service(
 
 
 def get_worker_service(
-    m_service: Annotated[ModulesService, Depends(get_module_service)]
+    m_service: Annotated[ModulesService, Depends(get_module_service)],
 ) -> WorkerService:
     return WorkerService(m_service)
 
 
 def get_claspyml_service(
     file_service: Annotated[FileService, Depends(get_file_service)],
-    m_service: Annotated[WorkerService, Depends(get_worker_service)]
+    m_service: Annotated[WorkerService, Depends(get_worker_service)],
 ) -> ClaspyMLService:
     return ClaspyMLService(file_service, m_service)

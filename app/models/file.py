@@ -24,12 +24,15 @@ class File(Base):
 
     status = Column(String, default="active")  # active | deleted | missing
 
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        DateTime(
-            timezone=True), nullable=False, default=lambda: datetime.now(
-            timezone.utc), onupdate=lambda: datetime.now(
-                timezone.utc))
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # ------------------------
     # User-specific storage bucket
@@ -38,8 +41,8 @@ class File(Base):
         String(16),
         nullable=False,
         default=lambda context: hashlib.sha1(
-            str(context.get_current_parameters()['user_id']).encode()
-        ).hexdigest()[:8]
+            str(context.get_current_parameters()["user_id"]).encode()
+        ).hexdigest()[:8],
     )
 
     # ------------------------

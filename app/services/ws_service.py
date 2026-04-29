@@ -5,10 +5,7 @@ from app.utils.auth_utils import verify_token
 
 class SocketIOService:
     def __init__(self):
-        self.sio = socketio.AsyncServer(
-            cors_allowed_origins="*",
-            async_mode="asgi"
-        )
+        self.sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 
         self.active_users: Dict[int, str] = {}
 
@@ -39,11 +36,7 @@ class SocketIOService:
         if not cookie_header:
             return None
 
-        cookies = dict(
-            item.split("=", 1)
-            for item in cookie_header.split("; ")
-            if "=" in item
-        )
+        cookies = dict(item.split("=", 1) for item in cookie_header.split("; ") if "=" in item)
 
         return cookies.get("token")
 

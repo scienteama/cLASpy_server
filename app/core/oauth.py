@@ -49,41 +49,34 @@ class OAuth2EmailRequestForm:
         grant_type: Annotated[
             Union[str, None],
             Form(pattern="^password$"),
-            Doc(
-                """
+            Doc("""
                 The OAuth2 spec says it is required and MUST be the fixed string
                 "password". Nevertheless, this dependency class is permissive and
                 allows not passing it. If you want to enforce it, use instead the
                 `OAuth2PasswordRequestFormStrict` dependency.
-                """
-            ),
+                """),
         ] = None,
         email: Annotated[
             str,
             Form(),
-            Doc(
-                """
+            Doc("""
                 `email` string. This field replaces the `username` field from the
                 OAuth2 specification, for applications that use email as the login
                 identifier.
-                """
-            ),
+                """),
         ],
         password: Annotated[
             str,
             Form(json_schema_extra={"format": "password"}),
-            Doc(
-                """
+            Doc("""
                 `password` string. The OAuth2 spec requires the exact field name
                 `password`.
-                """
-            ),
+                """),
         ],
         scope: Annotated[
             str,
             Form(),
-            Doc(
-                """
+            Doc("""
                 A single string with actually several scopes separated by spaces. Each
                 scope is also a string.
 
@@ -100,31 +93,26 @@ class OAuth2EmailRequestForm:
                 * `users:read`
                 * `profile`
                 * `openid`
-                """
-            ),
+                """),
         ] = "",
         client_id: Annotated[
             Union[str, None],
             Form(),
-            Doc(
-                """
+            Doc("""
                 If there's a `client_id`, it can be sent as part of the form fields.
                 But the OAuth2 specification recommends sending the `client_id` and
                 `client_secret` (if any) using HTTP Basic auth.
-                """
-            ),
+                """),
         ] = None,
         client_secret: Annotated[
             Union[str, None],
             Form(json_schema_extra={"format": "password"}),
-            Doc(
-                """
+            Doc("""
                 If there's a `client_password` (and a `client_id`), they can be sent
                 as part of the form fields. But the OAuth2 specification recommends
                 sending the `client_id` and `client_secret` (if any) using HTTP Basic
                 auth.
-                """
-            ),
+                """),
         ] = None,
     ):
         self.grant_type = grant_type

@@ -1,3 +1,3 @@
-from .user import User
-from .role import Role
-from .file import File
+from .user import User as User
+from .role import Role as Role
+from .file import File as File

@@ -1,4 +1,3 @@
-
 from typing import List
 from app.dao.role_dao import RoleDAO
 from app.schemas.role_schema import Role, RoleUpdate

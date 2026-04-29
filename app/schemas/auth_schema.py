@@ -36,4 +36,5 @@ def set_http_only_cookie(res: Response, config: CookieConfig):
             httponly=config.http_only,
             secure=config.secure,
             samesite=config.samesite,
-            max_age=config.max_age)
+            max_age=config.max_age,
+        )

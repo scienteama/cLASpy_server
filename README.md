@@ -39,7 +39,19 @@ Before running the application, ensure that the database configuration in `app/d
 
 To start the application, run:
 ``` bash
-python -m app.main
+poetry run python -m app.main
+```
+
+To format code, run:
+``` bash
+poetry run black .
+```
+
+To lint and auto-fix issues
+``` bash
+poetry run ruff check .
+
+poetry run ruff check . --fix
 ```
 
 ## Database Migrations

@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import case, select, update
 from app.models.file import File
-from app.models.user import UserStorage
 
 
 class FileDAO:
@@ -47,7 +46,7 @@ class FileDAO:
         return result.scalar_one_or_none()
 
     async def get_user_workspace_files(self, workspace_id: str) -> list[File]:
-        stmt = (select(File).where(File.storage_bucket == workspace_id, File.status == 'active'))
+        stmt = select(File).where(File.storage_bucket == workspace_id, File.status == "active")
         result = await self.db.execute(stmt)
         return result.scalars().unique().all()
 
@@ -56,7 +55,7 @@ class FileDAO:
         user_id: int,
         role_id: int,
         parent_id: Optional[uuid.UUID] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ):
         """Liste les enfants d'un dossier selon l'user et le status."""
         stmt = select(File).where(File.parent_id == parent_id)
@@ -71,25 +70,21 @@ class FileDAO:
             case(
                 (File.mime_type == "application/las", 0),
                 (File.mime_type == "application/model", 1),
-                else_=2
+                else_=2,
             ),
-            File.logical_name.asc()
+            File.logical_name.asc(),
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
     async def get_active_file_by_parent_and_name(
-        self,
-        logical_name: str,
-        user_id: int,
-        role_id: int,
-        parent_id: Optional[uuid.UUID] = None
+        self, logical_name: str, user_id: int, role_id: int, parent_id: Optional[uuid.UUID] = None
     ) -> Optional[File]:
         """Récupère un fichier actif par parent et nom."""
         stmt = select(File).where(
             File.logical_name == logical_name,
             File.status == "active",
-            File.parent_id.is_(None) if parent_id is None else File.parent_id == parent_id
+            File.parent_id.is_(None) if parent_id is None else File.parent_id == parent_id,
         )
 
         if role_id != 1:  # non-admin
@@ -99,10 +94,7 @@ class FileDAO:
         return result.scalars().first()
 
     async def get_deleted_files(self):
-        stmt = select(File).where(
-            File.status == "deleted",
-            File.is_directory == False
-        )
+        stmt = select(File).where(File.status == "deleted", not File.is_directory)
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
@@ -121,11 +113,7 @@ class FileDAO:
         stmt = (
             update(File)
             .where(File.user_id == user_id)
-            .values(
-                status="deleted",
-                user_id=None,
-                updated_at=datetime.now(timezone.utc)
-            )
+            .values(status="deleted", user_id=None, updated_at=datetime.now(timezone.utc))
         )
         await self.db.execute(stmt)
 

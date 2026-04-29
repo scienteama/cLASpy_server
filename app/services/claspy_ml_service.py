@@ -19,7 +19,7 @@ try:
     import sklearn.ensemble as algorithms
     import sklearn.neural_network as nn
     from app.utils.claspy_ml_utils import enrich_algorithm_params
-except ModuleNotFoundError as e:
+except ModuleNotFoundError:
     cLASpy_Classes = None
     algorithms = None
     enrich_algorithm_params = None
@@ -61,12 +61,14 @@ class ClaspyMLService:
         Retourne la liste des algorithmes disponibles dans sklearn.ensemble.
         """
         algos_names = [
-            name for name, obj in inspect.getmembers(self.algorithms, inspect.isclass)
+            name
+            for name, obj in inspect.getmembers(self.algorithms, inspect.isclass)
             if not name.startswith("_") and "Regressor" not in name
         ]
 
         neural_network_algos = [
-            name for name, obj in inspect.getmembers(self.neural_network, inspect.isclass)
+            name
+            for name, obj in inspect.getmembers(self.neural_network, inspect.isclass)
             if not name.startswith("_") and "Regressor" not in name
         ]
 
@@ -95,16 +97,17 @@ class ClaspyMLService:
         except TypeError as t:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Erreur lors de la récupération des paramètres pour '{name}' : {t}"
+                detail=f"Erreur lors de la récupération des paramètres pour '{name}' : {t}",
             )
         except Exception as e:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}"
+                detail=f"Erreur lors du traitement de l'algorithme '{name}' : {e}",
             )
 
-    async def upload_file(self, req: Request, folder_id: str,
-                          file: UploadFile | None = None) -> PointCloudInfo:
+    async def upload_file(
+        self, req: Request, folder_id: str, file: UploadFile | None = None
+    ) -> PointCloudInfo:
         """
         Upload un fichier .las ou .csv et retourne les infos du nuage de points.
         """
@@ -122,7 +125,7 @@ class ClaspyMLService:
         if not physical_path.exists():
             raise HTTPException(
                 status_code=500,
-                detail="Le fichier n'a pas été correctement sauvegardé sur le serveur"
+                detail="Le fichier n'a pas été correctement sauvegardé sur le serveur",
             )
 
         return self.process_existing_file(physical_path)
@@ -133,17 +136,13 @@ class ClaspyMLService:
         """
         if file_id is None:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail="Id fichier invalide ou manquant"
+                status_code=HTTPStatus.BAD_REQUEST, detail="Id fichier invalide ou manquant"
             )
 
         file = await self.file_service.get_file_by_id(file_id)
 
         if file is None:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail="Fichier non trouvé"
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Fichier non trouvé")
 
         file_path = await self.file_service.compute_physical_path(file)
 
@@ -185,8 +184,7 @@ class ClaspyMLService:
         """
         if not params.file_id:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail="Id fichier invalide ou manquant"
+                status_code=HTTPStatus.BAD_REQUEST, detail="Id fichier invalide ou manquant"
             )
 
         params.user_id = int(req.state.user.id)
@@ -195,7 +193,7 @@ class ClaspyMLService:
         file = await self.file_service.get_file_by_id(params.file_id)
         file_path = await self.file_service.compute_physical_path(file)
 
-        if params.folder_id != 'root':
+        if params.folder_id != "root":
             folder = await self.file_service.get_file_by_id(params.folder_id)
             params.output = str(await self.file_service.compute_physical_path(folder))
         else:
@@ -209,17 +207,20 @@ class ClaspyMLService:
             task_id = state.celery.send_task(
                 "taskrunner.tasks.ml.train_task",
                 args=[params.model_dump(), "Entraînement démarré"],
-                queue="ml")
+                queue="ml",
+            )
 
             return f"Tâche n'° {task_id} ajoutée avec succès."
 
         elif params.no_worker:
             result = self.claspy_t.train(arguments=params)
-            return await self.file_service.save_ml_result(result, params.user_id, params.role_id, params.folder_id)
+            return await self.file_service.save_ml_result(
+                result, params.user_id, params.role_id, params.folder_id
+            )
         else:
             raise HTTPException(
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE,
-                detail="Aucun worker n'est actuellement actif."
+                detail="Aucun worker n'est actuellement actif.",
             )
 
     async def get_model_info(self, model_id: str) -> ModelInfo:
@@ -238,12 +239,12 @@ class ClaspyMLService:
         except Exception as e:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Erreur lors du chargement du modèle : {str(e)}"
+                detail=f"Erreur lors du chargement du modèle : {str(e)}",
             )
 
         # Retrieve algorithm, model
-        algorithm = loaded_model['algorithm']
-        model = loaded_model['model']
+        algorithm = loaded_model["algorithm"]
+        model = loaded_model["model"]
 
         # Check if model created by GridSearchCV or Pipeline
         if isinstance(model, GridSearchCV):
@@ -251,28 +252,28 @@ class ClaspyMLService:
         elif isinstance(model, Pipeline):
             pass
         else:
-            raise ValueError('Model load failed! Model must be GridSearchCV or Pipeline!')
+            raise ValueError("Model load failed! Model must be GridSearchCV or Pipeline!")
 
         # Scaler
-        scaler = model['scaler']
+        scaler = model["scaler"]
 
         # PCA
         try:
-            if model['pca']:
-                pca = model['pca'].get_params()['n_components']
-                pca = str(pca) + ' components'
+            if model["pca"]:
+                pca = model["pca"].get_params()["n_components"]
+                pca = str(pca) + " components"
             else:
-                pca = 'No PCA applied'
+                pca = "No PCA applied"
         except KeyError:
-            pca = 'No PCA applied'
+            pca = "No PCA applied"
 
-        features = loaded_model['feature_names']
+        features = loaded_model["feature_names"]
 
         # Parameters
         algo_parameters = list[str]()
-        dict_algo_param = model['classifier'].get_params()
+        dict_algo_param = model["classifier"].get_params()
         for key in dict_algo_param:
-            algo_parameters.append(str(key) + ': ' + str(dict_algo_param[key]) + '\n')
+            algo_parameters.append(str(key) + ": " + str(dict_algo_param[key]) + "\n")
 
         return ModelInfo(
             model_name=model_file.logical_name,
@@ -280,5 +281,5 @@ class ClaspyMLService:
             pca=pca,
             feat_list=features,
             algo_name=algorithm,
-            parameters=algo_parameters
+            parameters=algo_parameters,
         )

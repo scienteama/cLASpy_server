@@ -17,8 +17,7 @@ class RoleDAO:
         role: Role | None = result.scalar_one_or_none()
         if not role:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Role {role_id} introuvable"
+                status_code=HTTPStatus.NOT_FOUND, detail=f"Role {role_id} introuvable"
             )
         return role
 
@@ -37,10 +36,7 @@ class RoleDAO:
         result = await self.db.execute(select(Role).where(Role.id == role_id))
         role: Role | None = result.scalar_one_or_none()
         if not role:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Rôle introuvable"
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Rôle introuvable")
 
         for field, value in update_data.items():
             setattr(role, field, value)

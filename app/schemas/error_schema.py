@@ -26,16 +26,9 @@ class ErrorResponse(ApiResponse[dict]):
         resp = ErrorResponse(
             isOk=False,
             result=HTTPStatus(exc.status_code).phrase,
-            data={
-                "detail": exc.detail,
-                "code": exc.status_code,
-                "path": str(request.url.path)
-            }
+            data={"detail": exc.detail, "code": exc.status_code, "path": str(request.url.path)},
         )
-        jsonResponse = JSONResponse(
-            status_code=exc.status_code,
-            content=resp.model_dump()
-        )
+        jsonResponse = JSONResponse(status_code=exc.status_code, content=resp.model_dump())
         jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
         jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"
         return jsonResponse
@@ -45,11 +38,7 @@ class ErrorResponse(ApiResponse[dict]):
         response = ErrorResponse(
             isOk=False,
             result="Pydantic Validation Error",
-            data={
-                "detail": exc.errors(),
-                "body": exc.body,
-                "code": 422
-            }
+            data={"detail": exc.errors(), "body": exc.body, "code": 422},
         )
         jsonResponse = JSONResponse(status_code=422, content=response.model_dump())
         jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
@@ -62,8 +51,7 @@ class ErrorResponse(ApiResponse[dict]):
         if isinstance(resp.data, dict):
             resp.data["path"] = str(request.url.path)
         jsonResponse = JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
-            content=resp.model_dump()
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value, content=resp.model_dump()
         )
         jsonResponse.headers["Access-Control-Allow-Origin"] = "https://localhost:8081"
         jsonResponse.headers["Access-Control-Allow-Credentials"] = "true"

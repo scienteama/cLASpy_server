@@ -14,7 +14,6 @@ class ConfigService:
     async def get_api_settings(self):
         if not self.config:
             raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail=f"Configuration non chargée."
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail="Configuration non chargée."
             )
         return self.config.get_public_settings()

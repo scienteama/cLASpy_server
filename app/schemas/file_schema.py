@@ -30,4 +30,4 @@ class FolderModel(BaseModel):
 # pour références récursives
 FolderModel.model_rebuild()
 
-FileType = Literal['all', 'model', 'las']
+FileType = Literal["all", "model", "las"]

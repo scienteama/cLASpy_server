@@ -7,7 +7,7 @@ from kombu.exceptions import OperationalError
 try:
     from taskrunner.main import make_celery
     from taskrunner.manager import WorkerManager
-except ModuleNotFoundError as e:
+except ModuleNotFoundError:
     pass
 
 
@@ -24,25 +24,19 @@ class WorkerService:
 
         modules = self.m_service.list_claspy_modules()
 
-        taskrunner_enabled = any(
-            mod.name == "taskrunner" and mod.enable
-            for mod in modules
-        )
+        taskrunner_enabled = any(mod.name == "taskrunner" and mod.enable for mod in modules)
 
         if not taskrunner_enabled:
             return WorkerState(celery=None, workers={})
 
         celery = make_celery(
             broker_url=f"amqp://{self.config.RABBITMQ_DEFAULT_USER}:{self.config.RABBITMQ_DEFAULT_PASS}@localhost:5672//",
-            result_backend=f"redis://:{self.config.REDIS_PASSWORD}@localhost:6379/0"
+            result_backend=f"redis://:{self.config.REDIS_PASSWORD}@localhost:6379/0",
         )
 
         workers = await self._safe_get_workers(celery)
 
-        return WorkerState(
-            celery=celery,
-            workers=workers
-        )
+        return WorkerState(celery=celery, workers=workers)
 
     async def _safe_get_workers(
         self,

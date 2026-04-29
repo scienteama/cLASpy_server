@@ -1,14 +1,8 @@
-
 import inspect
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Tuple
-import inspect
-import re
-from typing import Dict, Any
-import inspect
-import re
-from typing import Dict, Any
+from typing import Any
 
 from app.schemas.train_schema import PointCloudInfo
 
@@ -53,7 +47,7 @@ def parse_type_and_default(full_text: str) -> Tuple[str, Optional[str], Optional
 
     typeinfo = full_text
     if default_match:
-        typeinfo = typeinfo[:default_match.start()]
+        typeinfo = typeinfo[: default_match.start()]
     typeinfo = typeinfo.strip().rstrip(",")
 
     return typeinfo, default, choices
@@ -88,7 +82,7 @@ def get_params_from_doc(algo_class) -> Dict[str, dict]:
                 params[current_param] = {
                     "baseinfo": baseinfo,
                     "values": choices,
-                    "default": default
+                    "default": default,
                 }
             current_param = m.group(1)
             param_lines = [m.group(2)]
@@ -100,11 +94,7 @@ def get_params_from_doc(algo_class) -> Dict[str, dict]:
     if current_param:
         full_text = " ".join(param_lines).strip()
         baseinfo, default, choices = parse_type_and_default(full_text)
-        params[current_param] = {
-            "baseinfo": baseinfo,
-            "values": choices,
-            "default": default
-        }
+        params[current_param] = {"baseinfo": baseinfo, "values": choices, "default": default}
 
     return params
 
@@ -151,7 +141,7 @@ def parse_cloud_points_info(text: str, file_name: str) -> PointCloudInfo:
     Parse le retour de "ClaspyTrainer.point_cloud_info()" pour générer un PointCloudInfo
     """
     ext = Path(file_name).suffix.lower()
-    if ext not in ('.las', '.csv'):
+    if ext not in (".las", ".csv"):
         raise ValueError(f"Extension de fichier non supportée : {ext}")
 
     points_match = re.search(

@@ -8,7 +8,7 @@ def catch_db_errors(message_model: str = ""):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            result = f"Une erreur interne est survenue."
+            result = "Une erreur interne est survenue."
             try:
                 return await func(*args, **kwargs)
             except DBAPIError as e:
@@ -25,9 +25,8 @@ def catch_db_errors(message_model: str = ""):
 
                 raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
             except Exception:
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail=result
-                )
+                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
         return wrapper
+
     return decorator

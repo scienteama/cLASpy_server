@@ -20,13 +20,17 @@ class AuthService:
     async def authenticate(self, email: str, password: str) -> UserOut:
         user = await self.user_service.get_full_user_by_email(email)
         if verify_password(password, user.password):
-            await self.user_service.update_user_by_id(user.id, UserUpdate(last_login=datetime.now(timezone.utc)))
+            await self.user_service.update_user_by_id(
+                user.id, UserUpdate(last_login=datetime.now(timezone.utc))
+            )
             return UserOut.model_validate(user)
         else:
             raise_auth_exception("Email ou mot de passe incorrect")
 
     async def create_access_token(self, user: UserOut) -> Token:
-        to_encode = {"user": TokenData(id=user.id, email=user.email, role_id=user.role_id).model_dump()}
+        to_encode = {
+            "user": TokenData(id=user.id, email=user.email, role_id=user.role_id).model_dump()
+        }
         try:
             expire_minutes = max(int(self.config.ACCESS_TOKEN_EXPIRE_MINUTES), 1)
         except (TypeError, ValueError):
@@ -38,4 +42,4 @@ class AuthService:
 
     async def clear_auth_cookie(self, res: Response, key: str) -> str:
         res.delete_cookie(key, httponly=True)
-        return f"Déconnexion réussie"
+        return "Déconnexion réussie"

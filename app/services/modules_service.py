@@ -28,7 +28,9 @@ class ModulesService:
             pass
 
         plugins_metadata = cls._read_plugins_json()
-        plugin_data = next((p for p in plugins_metadata if p["name"].lower() == plugin_name.lower()), None)
+        plugin_data = next(
+            (p for p in plugins_metadata if p["name"].lower() == plugin_name.lower()), None
+        )
 
         if not plugin_data:
             raise ValueError(f"Plugin '{plugin_name}' non trouvé dans {cls.PLUGINS_FILE}")
@@ -71,7 +73,7 @@ class ModulesService:
 
         # Liste des packages installés
         installed_plugins = {
-            dist.metadata['Name'].lower().replace("_", "-"): dist.version
+            dist.metadata["Name"].lower().replace("_", "-"): dist.version
             for dist in distributions()
         }
 

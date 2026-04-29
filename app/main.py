@@ -25,10 +25,11 @@ from app.schemas.error_schema import ErrorResponse
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Création de la connexion à la DB au démarrage
-    async with engine.begin() as conn:
+    async with engine.begin():
         pass
     yield
     await engine.dispose()
+
 
 config = get_settings()
 
@@ -67,11 +68,7 @@ app.add_exception_handler(HTTPException, ErrorResponse.http_exception_handler)
 app.add_exception_handler(RequestValidationError, ErrorResponse.validation_exception_handler)
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
 
-socket_app = socketio.ASGIApp(
-    ws_service.sio,
-    app,
-    socketio_path="socket.io"
-)
+socket_app = socketio.ASGIApp(ws_service.sio, app, socketio_path="socket.io")
 
 app = socket_app
 

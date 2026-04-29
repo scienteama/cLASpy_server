@@ -7,7 +7,7 @@ except ModuleNotFoundError:
 
 
 class WorkerState:
-    def __init__(self, celery: Optional['Celery'] = None, workers: Dict[str, int] = None):
+    def __init__(self, celery: Optional["Celery"] = None, workers: Dict[str, int] = None):
         self.celery = celery
         self.workers = workers or {}
 

@@ -59,16 +59,12 @@ class UserService:
         """
         if not email:
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Adresse email invalide."
+                status_code=HTTPStatus.BAD_REQUEST, detail="Adresse email invalide."
             )
 
         user = await self.userDAO.get_by_email(email)
         if not user:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Adresse email inconnue."
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Adresse email inconnue.")
         return UserOut.model_validate(user)
 
     async def get_full_user_by_email(self, email: str) -> UserBase:

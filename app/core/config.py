@@ -1,5 +1,4 @@
 from functools import lru_cache
-import os
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -47,8 +46,17 @@ class Settings(BaseSettings):
 
     def get_public_settings(self) -> dict:
         """Retourne les paramètres publics, excluant les champs sensibles."""
-        return self.model_dump(exclude={'db_user', 'db_password', 'db_port',
-                               'db_host', 'db_name', 'SECRET_KEY', 'ALGORITHM'})
+        return self.model_dump(
+            exclude={
+                "db_user",
+                "db_password",
+                "db_port",
+                "db_host",
+                "db_name",
+                "SECRET_KEY",
+                "ALGORITHM",
+            }
+        )
 
 
 @lru_cache()

@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from http import HTTPStatus
 import os
 from fastapi import HTTPException
@@ -11,10 +10,7 @@ from app.schemas.auth_schema import TokenData
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""
     if not password:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"Paramètres invalides"
-        )
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Paramètres invalides")
     password_hash = PasswordHash.recommended()
     salt = os.urandom(16)
     return password_hash.hash(password, salt=salt)
@@ -23,10 +19,7 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a hashed password against a plain password."""
     if not plain_password:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"Paramètres invalides"
-        )
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Paramètres invalides")
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
 
@@ -39,10 +32,7 @@ def verify_token(token: str) -> TokenData:
 
         config = get_settings()
         payload = jwt.decode(
-            token,
-            config.SECRET_KEY,
-            algorithms=[config.ALGORITHM],
-            options={"require": ["exp"]}
+            token, config.SECRET_KEY, algorithms=[config.ALGORITHM], options={"require": ["exp"]}
         )
         user = payload.get("user")
         if not user:
@@ -59,4 +49,5 @@ def raise_auth_exception(detail: str):
     raise HTTPException(
         status_code=HTTPStatus.UNAUTHORIZED,
         detail=detail,
-        headers={"WWW-Authenticate": "Bearer"},)
+        headers={"WWW-Authenticate": "Bearer"},
+    )

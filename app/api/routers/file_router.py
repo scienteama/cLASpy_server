@@ -10,7 +10,6 @@ from app.schemas.file_schema import FileModel, FolderModel
 from app.schemas.response_schema import ApiResponse
 from app.services.files_service import FileService
 
-
 router = APIRouter()
 
 # ------------------------
@@ -41,8 +40,7 @@ async def upload_file(
 
 @router.get("/download-file/{item_id}", response_class=FileResponse)
 async def download_file(
-    item_id: UUID,
-    file_service: Annotated[FileService, Depends(get_file_service)]
+    item_id: UUID, file_service: Annotated[FileService, Depends(get_file_service)]
 ):
     """
     Télécharger un fichier.
@@ -54,13 +52,14 @@ async def download_file(
     except Exception as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors du téléchargement: {str(e)}"
+            detail=f"Erreur lors du téléchargement: {str(e)}",
         )
 
 
 # ------------------------
 # List directory
 # ------------------------
+
 
 @router.get("/list", response_model=ApiResponse[FolderModel])
 async def get_files(
@@ -81,6 +80,7 @@ async def get_files(
 # List models
 # ------------------------
 
+
 @router.get("/models", response_model=ApiResponse[FolderModel])
 async def get_models(
     req: Request,
@@ -92,13 +92,16 @@ async def get_models(
     """
     user_id = int(req.state.user.id)
     role_id = int(req.state.user.role_id)
-    res = await file_service.list_directory(user_id, role_id, parent_id=parent_id, file_type="model")
+    res = await file_service.list_directory(
+        user_id, role_id, parent_id=parent_id, file_type="model"
+    )
     return ApiResponse[FolderModel](data=res)
 
 
 # ------------------------
 # List LAS files
 # ------------------------
+
 
 @router.get("/las", response_model=ApiResponse[FolderModel])
 async def get_las_files(
@@ -119,6 +122,7 @@ async def get_las_files(
 # Remove file / folder
 # ------------------------
 
+
 @router.delete("/remove/{item_id}", response_model=ApiResponse[str])
 async def remove_file_or_folder(
     req: Request,
@@ -138,6 +142,7 @@ async def remove_file_or_folder(
 # Remove files
 # ------------------------
 
+
 @router.post("/remove-multiple", response_model=ApiResponse[str])
 async def remove_items(
     req: Request,
@@ -149,12 +154,7 @@ async def remove_items(
 
     try:
         for item_id in ids:
-            await file_service.delete_path(
-                user_id,
-                role_id,
-                item_id,
-                auto_commit=False
-            )
+            await file_service.delete_path(user_id, role_id, item_id, auto_commit=False)
 
         await file_service.file_dao.commit()
 
@@ -168,6 +168,7 @@ async def remove_items(
 # -----------------------
 # Rename file / folder
 # ------------------------
+
 
 @router.put("/rename/{item_id}", response_model=ApiResponse[str])
 async def rename_file_or_folder(
@@ -188,6 +189,7 @@ async def rename_file_or_folder(
 # ------------------------
 # Create directory
 # ------------------------
+
 
 @router.post("/create-directory", response_model=ApiResponse[str])
 async def create_directory(

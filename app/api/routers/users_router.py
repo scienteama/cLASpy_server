@@ -10,9 +10,11 @@ router = APIRouter()
 
 
 @router.post("/add", response_model=ApiResponse[UserOut])
-async def register_user(req: Request,
-                        user_service: Annotated[UserService, Depends(get_user_service)],
-                        user: UserIn = Body(...)):
+async def register_user(
+    req: Request,
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    user: UserIn = Body(...),
+):
     """
     Crée un nouvel utilisateur.
     """
@@ -21,9 +23,11 @@ async def register_user(req: Request,
 
 
 @router.patch("/update/{user_id}", response_model=ApiResponse[UserOut])
-async def update_user(user_id: int,
-                      user_service: Annotated[UserService, Depends(get_user_service)],
-                      fields: UserUpdate = Body(...)):
+async def update_user(
+    user_id: int,
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    fields: UserUpdate = Body(...),
+):
     """
     Met à jour partiellement un utilisateur existant.
     """
@@ -32,8 +36,9 @@ async def update_user(user_id: int,
 
 
 @router.delete("/delete/{user_id}", response_model=ApiResponse[str])
-async def delete_user(user_id: int,
-                      user_service: Annotated[UserService, Depends(get_user_service)]):
+async def delete_user(
+    user_id: int, user_service: Annotated[UserService, Depends(get_user_service)]
+):
     """
     Supprime un utilisateur par ID.
     """
@@ -42,8 +47,7 @@ async def delete_user(user_id: int,
 
 
 @router.get("/get-by-id/{user_id}", response_model=ApiResponse[UserOut])
-async def get_user(user_id: int,
-                   user_service: Annotated[UserService, Depends(get_user_service)]):
+async def get_user(user_id: int, user_service: Annotated[UserService, Depends(get_user_service)]):
     """
     Récupère un utilisateur par ID.
     """
@@ -52,8 +56,9 @@ async def get_user(user_id: int,
 
 
 @router.get("/get-by-email", response_model=ApiResponse[UserOut])
-async def get_user(email: str,
-                   user_service: Annotated[UserService, Depends(get_user_service)]):
+async def get_user_by_email(
+    email: str, user_service: Annotated[UserService, Depends(get_user_service)]
+):
     """
     Récupère un utilisateur par email.
     """
@@ -62,8 +67,9 @@ async def get_user(email: str,
 
 
 @router.get("/me", response_model=ApiResponse[UserOut])
-async def get_me(req: Request,
-                 user_service: Annotated[UserService, Depends(get_user_service)]) -> ApiResponse[UserOut]:
+async def get_me(
+    req: Request, user_service: Annotated[UserService, Depends(get_user_service)]
+) -> ApiResponse[UserOut]:
     """
     Récupère l'utilisateur courant.
     """

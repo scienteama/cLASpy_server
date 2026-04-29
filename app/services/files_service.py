@@ -40,12 +40,6 @@ class FileService:
         parts = await self.file_dao.get_full_path_parts(file.id)
         return self.storage_root / file.storage_bucket / Path(*parts)
 
-    async def get_file_by_id(self, file_id: str) -> File:
-        file = await self.file_dao.get_file(file_id)
-        if not file:
-            raise HTTPException(404, "Fichier introuvable")
-        return file
-
     async def compute_trash_path(self, file: File) -> Path:
         physical = await self.compute_physical_path(file)
         return self.trash_root / physical.relative_to(self.storage_root)
@@ -93,32 +87,22 @@ class FileService:
     # ------------------------------------------------------------------
 
     async def save_file(
-        self,
-        file: UploadFile,
-        user_id: int,
-        role_id: int,
-        parent_id: uuid.UUID | None = None
+        self, file: UploadFile, user_id: int, role_id: int, parent_id: uuid.UUID | None = None
     ) -> FileModel:
 
         temp_path = self.storage_root / f".tmp_{uuid.uuid4()}"
         await run_in_threadpool(lambda: temp_path.parent.mkdir(parents=True, exist_ok=True))
 
         try:
-            await run_in_threadpool(
-                lambda: shutil.copyfileobj(file.file, temp_path.open("wb"))
-            )
+            await run_in_threadpool(lambda: shutil.copyfileobj(file.file, temp_path.open("wb")))
 
             existing = await self.file_dao.get_active_file_by_parent_and_name(
                 file.filename, user_id, role_id, parent_id
             )
             if existing:
-                raise HTTPException(
-                    HTTPStatus.CONFLICT,
-                    f"Fichier '{file.filename}' existe déjà"
-                )
+                raise HTTPException(HTTPStatus.CONFLICT, f"Fichier '{file.filename}' existe déjà")
 
-            storage_bucket = hashlib.sha1(
-                str(user_id).encode()).hexdigest()[:8]
+            storage_bucket = hashlib.sha1(str(user_id).encode()).hexdigest()[:8]
 
             ext = os.path.splitext(file.filename)[1].lower()
 
@@ -129,13 +113,13 @@ class FileService:
                 logical_name=file.filename,
                 is_directory=False,
                 mime_type=(
-                    "application/las" if ext == ".las"
-                    else "application/model" if ext == ".model"
-                    else file.content_type
+                    "application/las"
+                    if ext == ".las"
+                    else "application/model" if ext == ".model" else file.content_type
                 ),
                 size_bytes=temp_path.stat().st_size,
                 status="active",
-                storage_bucket=storage_bucket
+                storage_bucket=storage_bucket,
             )
 
             await self.file_dao.add_file(db_file)
@@ -153,7 +137,7 @@ class FileService:
                 modified_at=db_file.updated_at,
                 size_bytes=db_file.size_bytes,
                 mimeType=db_file.mime_type,
-                user_id=db_file.user_id
+                user_id=db_file.user_id,
             )
 
         except Exception:
@@ -170,15 +154,13 @@ class FileService:
         paths: dict[str, Path],
         user_id: int,
         role_id: int,
-        parent_id: uuid.UUID | str | None = None
+        parent_id: uuid.UUID | str | None = None,
     ):
 
         # Crée un dossier par défaut si parent_id == 'root'
-        if parent_id == 'root':
+        if parent_id == "root":
             parent_dir = await self.create_directory(
-                user_id,
-                role_id,
-                f"train_{datetime.now().strftime('%y%m%d_%H%M')}"
+                user_id, role_id, f"train_{datetime.now().strftime('%y%m%d_%H%M')}"
             )
             parent_id = parent_dir.id
             physical_folder = await self.compute_physical_path(parent_dir)
@@ -196,11 +178,9 @@ class FileService:
                     path.name, user_id, role_id, parent_id
                 )
                 if existing:
-                    raise HTTPException(HTTPStatus.CONFLICT,
-                                        f"Fichier '{path.name}' existe déjà")
+                    raise HTTPException(HTTPStatus.CONFLICT, f"Fichier '{path.name}' existe déjà")
 
-                storage_bucket = hashlib.sha1(
-                    str(user_id).encode()).hexdigest()[:8]
+                storage_bucket = hashlib.sha1(str(user_id).encode()).hexdigest()[:8]
 
                 db_file = File(
                     id=uuid.uuid4(),
@@ -211,7 +191,7 @@ class FileService:
                     mime_type=detect_mimetype(path),
                     size_bytes=path.stat().st_size,
                     status="active",
-                    storage_bucket=storage_bucket
+                    storage_bucket=storage_bucket,
                 )
 
                 if physical_folder:
@@ -236,7 +216,7 @@ class FileService:
         result = {
             "saved_files": [str(f.logical_name) for f, _ in saved_files],
             "parent_id": str(parent_id),
-            "path": str(physical_folder) if physical_folder else None
+            "path": str(physical_folder) if physical_folder else None,
         }
 
         return result
@@ -245,7 +225,9 @@ class FileService:
     # Create directory
     # ------------------------------------------------------------------
 
-    async def create_directory(self, user_id: int, role_id: int, name: str, parent_id: uuid.UUID | None = None) -> File:
+    async def create_directory(
+        self, user_id: int, role_id: int, name: str, parent_id: uuid.UUID | None = None
+    ) -> File:
         existing = await self.file_dao.get_active_file_by_parent_and_name(
             name, user_id, role_id, parent_id
         )
@@ -260,7 +242,7 @@ class FileService:
             logical_name=name,
             is_directory=True,
             status="active",
-            storage_bucket=storage_bucket
+            storage_bucket=storage_bucket,
         )
 
         await self.file_dao.add_file(folder)
@@ -277,7 +259,7 @@ class FileService:
         role_id: int,
         parent_id: uuid.UUID | None = None,
         depth: int = 0,
-        file_type: FileType = "all"
+        file_type: FileType = "all",
     ) -> FolderModel:
 
         entries = await self.file_dao.list_children(user_id, role_id, parent_id)
@@ -290,7 +272,7 @@ class FileService:
             modified_at=datetime.now(timezone.utc),
             children=[],
             size_bytes=0,
-            user_id=user_id if parent_id is None else None
+            user_id=user_id if parent_id is None else None,
         )
 
         for entry in entries:
@@ -320,7 +302,7 @@ class FileService:
                         modified_at=entry.updated_at,
                         size_bytes=entry.size_bytes,
                         mimeType=entry.mime_type,
-                        user_id=entry.user_id
+                        user_id=entry.user_id,
                     )
                 )
                 folder.size_bytes += entry.size_bytes or 0
@@ -331,7 +313,9 @@ class FileService:
     # Soft delete
     # ------------------------------------------------------------------
 
-    async def delete_path(self, user_id: int, role_id: int, item_id: uuid.UUID, auto_commit: bool = True) -> str:
+    async def delete_path(
+        self, user_id: int, role_id: int, item_id: uuid.UUID, auto_commit: bool = True
+    ) -> str:
         root = await self.file_dao.get_file(item_id)
         if not root:
             raise HTTPException(HTTPStatus.NOT_FOUND, "Objet introuvable")
@@ -413,7 +397,9 @@ class FileService:
     # Rename
     # ------------------------------------------------------------------
 
-    async def rename_path(self, item_id: uuid.UUID, user_id: int, role_id: int, new_name: str) -> str:
+    async def rename_path(
+        self, item_id: uuid.UUID, user_id: int, role_id: int, new_name: str
+    ) -> str:
         file = await self.file_dao.get_file(item_id)
         if not file:
             raise HTTPException(HTTPStatus.NOT_FOUND)
@@ -464,14 +450,14 @@ class FileService:
         if not file or file.status != "active":
             raise HTTPException(HTTPStatus.NOT_FOUND, "Fichier introuvable")
         if file.is_directory:
-            raise HTTPException(HTTPStatus.BAD_REQUEST,
-                                "Dossier non téléchargeable")
+            raise HTTPException(HTTPStatus.BAD_REQUEST, "Dossier non téléchargeable")
         if not await self.file_exists_on_disk(file):
-            raise HTTPException(
-                HTTPStatus.GONE, "Fichier manquant sur le disque")
+            raise HTTPException(HTTPStatus.GONE, "Fichier manquant sur le disque")
         physical_path = await self.compute_physical_path(file)
-        response = FileResponse(path=physical_path,
-                                filename=file.logical_name,
-                                media_type=file.mime_type or "application/octet-stream")
+        response = FileResponse(
+            path=physical_path,
+            filename=file.logical_name,
+            media_type=file.mime_type or "application/octet-stream",
+        )
         response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
         return response

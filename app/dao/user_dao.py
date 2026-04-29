@@ -24,10 +24,7 @@ class UserDAO:
         result = await self.db.execute(select(User).where(User.id == user_id))
         user: User | None = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Utilisateur introuvable"
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Utilisateur introuvable")
 
         for field, value in update_data.items():
             setattr(user, field, value)
@@ -44,8 +41,7 @@ class UserDAO:
 
         if not user:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Utilisateur {user_id} introuvable"
+                status_code=HTTPStatus.NOT_FOUND, detail=f"Utilisateur {user_id} introuvable"
             )
         await self.db.delete(user)
         return True
@@ -55,8 +51,7 @@ class UserDAO:
         user: User | None = result.scalar_one_or_none()
         if not user:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
-                detail=f"Utilisateur {user_id} introuvable"
+                status_code=HTTPStatus.NOT_FOUND, detail=f"Utilisateur {user_id} introuvable"
             )
         return user
 
