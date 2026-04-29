@@ -1,15 +1,15 @@
-import app.models
-from app.database import Base
-from alembic import context
-from sqlalchemy import engine_from_config, pool
-from dotenv import load_dotenv
-from logging.config import fileConfig
 import os
 import sys
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
+from logging.config import fileConfig
+from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
+from alembic import context
+from app.database import Base
+import app.models
 
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 

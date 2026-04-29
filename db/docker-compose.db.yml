@@ -8,10 +8,10 @@ services:
     volumes:
       - claspy_db_data:/var/lib/postgresql
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-      - TZ=Europe/Paris
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      TZ: Europe/Paris
     networks:
       - claspy-net
 
@@ -21,3 +21,6 @@ volumes:
 networks:
   claspy-net:
     external: true
+
+
+# docker compose --env-file .env -f db/docker-compose.db.yml up -d
