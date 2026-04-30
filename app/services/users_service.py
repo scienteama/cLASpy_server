@@ -44,10 +44,7 @@ class UserService:
         user = await self.userDAO.get_by_id(user_id)
 
         storage = await self.userDAO.get_user_storage_by_user_id(user_id)
-        u_storage = (
-            UserStorageDTO.model_validate(storage)
-            if storage else None
-        )
+        u_storage = UserStorageDTO.model_validate(storage) if storage else None
 
         return UserOut(
             id=user.id,
@@ -58,9 +55,9 @@ class UserService:
             updated_at=user.updated_at,
             last_login=user.last_login,
             role_id=user.role_id,
-            storage=u_storage
+            storage=u_storage,
         )
-    
+
     async def get_all_users(self) -> List[UserOut]:
         """
         Retourne la liste complète des utilisateurs.

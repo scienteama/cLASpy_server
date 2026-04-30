@@ -31,7 +31,7 @@ class User(Base):
         uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="immediate"
+        lazy="immediate",
     )
 
     def __repr__(self):

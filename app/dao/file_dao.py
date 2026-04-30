@@ -22,15 +22,12 @@ class FileDAO:
         if not file.is_directory:
             await self.increase_user_storage_used_bytes(user_id, file.size_bytes)
 
-
     async def increase_user_storage_used_bytes(self, user_id: int, size: int):
         """Incrémente le stockage utilisé par un utilisateur."""
         result = await self.db.execute(
             update(UserStorage)
             .where(UserStorage.user_id == user_id)
-            .values(
-                storage_used_bytes=UserStorage.storage_used_bytes + size
-            )
+            .values(storage_used_bytes=UserStorage.storage_used_bytes + size)
         )
 
         if result.rowcount == 0:
@@ -117,7 +114,7 @@ class FileDAO:
     # ------------------------
 
     async def soft_delete(self, file: File, user_id: int):
-        """Soft delete """
+        """Soft delete"""
         if not file.is_directory:
             await self.decrease_user_storage_used_bytes(user_id, file.size_bytes)
         file.status = "deleted"
@@ -130,9 +127,7 @@ class FileDAO:
         result = await self.db.execute(
             update(UserStorage)
             .where(UserStorage.user_id == user_id)
-            .values(
-                storage_used_bytes=UserStorage.storage_used_bytes - size
-            )
+            .values(storage_used_bytes=UserStorage.storage_used_bytes - size)
         )
 
         if result.rowcount == 0:

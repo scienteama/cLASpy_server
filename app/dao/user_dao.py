@@ -54,14 +54,12 @@ class UserDAO:
                 status_code=HTTPStatus.NOT_FOUND, detail=f"Utilisateur {user_id} introuvable"
             )
         return user
-    
+
     async def get_user_storage_by_user_id(self, user_id: int) -> UserStorage:
         result = await self.db.execute(select(UserStorage).where(UserStorage.user_id == user_id))
         user_storage: UserStorage | None = result.scalar_one_or_none()
         if not user_storage:
-            raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND
-            )
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND)
         return user_storage
 
     async def get_by_email(self, email: str) -> User:
