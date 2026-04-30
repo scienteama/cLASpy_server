@@ -2,6 +2,16 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, EmailStr, Field, constr
 from datetime import datetime
 
+class UserStorageDTO(BaseModel):
+    id: int
+    user_id: int
+    storage_used_bytes: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        validate_by_name = True
 
 class UserBase(BaseModel):
     id: int
@@ -29,7 +39,6 @@ class UserIn(BaseModel):
     class Config:
         validate_by_name = True
 
-
 class UserOut(BaseModel):
     id: int
     firstname: str
@@ -39,11 +48,11 @@ class UserOut(BaseModel):
     updated_at: datetime
     last_login: Optional[datetime] = Field(None)
     role_id: int
+    storage: Optional[UserStorageDTO] = None
 
     class Config:
         from_attributes = True
         validate_by_name = True
-
 
 class UserUpdate(BaseModel):
     firstname: Optional[Annotated[str, constr(min_length=1, max_length=50)]] = None
@@ -52,3 +61,4 @@ class UserUpdate(BaseModel):
     password: Optional[Annotated[str, constr(min_length=8)]] = None
     role_id: Optional[int] = None
     last_login: Optional[datetime] = None
+

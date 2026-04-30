@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Any, Dict, List
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select
 from app.models.role import Role
 from app.utils.db_error import catch_db_errors
 

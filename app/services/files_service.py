@@ -122,7 +122,7 @@ class FileService:
                 storage_bucket=storage_bucket,
             )
 
-            await self.file_dao.add_file(db_file)
+            await self.file_dao.add_file(db_file, user_id)
             await self.file_dao.flush()
 
             physical_path = await self.compute_physical_path(db_file)
@@ -197,7 +197,7 @@ class FileService:
                 if physical_folder:
                     await run_in_threadpool(lambda: shutil.move(str(path), str(destination)))
 
-                await self.file_dao.add_file(db_file)
+                await self.file_dao.add_file(db_file, user_id)
                 saved_files.append((db_file, destination))
 
             await self.file_dao.commit()
@@ -245,7 +245,7 @@ class FileService:
             storage_bucket=storage_bucket,
         )
 
-        await self.file_dao.add_file(folder)
+        await self.file_dao.add_file(folder, user_id)
         await self.file_dao.commit()
         return folder
 
@@ -337,7 +337,7 @@ class FileService:
                 await self.safe_move(physical_root, trash_root)
 
             for node in nodes:
-                await self.file_dao.soft_delete(node)
+                await self.file_dao.soft_delete(node, user_id)
 
             if auto_commit:
                 await self.file_dao.commit()

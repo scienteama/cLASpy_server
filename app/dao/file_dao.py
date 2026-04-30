@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import case, select, update
 from app.models.file import File
+from app.models.user import UserStorage
 
 
 class FileDAO:
@@ -14,13 +15,26 @@ class FileDAO:
     # Base operations
     # ------------------------
 
-    async def add_file(self, file: File):
-        """Ajoute un fichier dans la session db."""
-        # result = await self.db.execute(select(UserStorage).where(UserStorage.user_id == user_id))
-        # uStorage: UserStorage | None = result.scalar_one_or_none()
-
+    async def add_file(self, file: File, user_id: int):
+        """Ajoute un fichier et met à jour le stockage."""
         self.db.add(file)
         await self.db.flush()
+        if not file.is_directory:
+            await self.increase_user_storage_used_bytes(user_id, file.size_bytes)
+
+
+    async def increase_user_storage_used_bytes(self, user_id: int, size: int):
+        """Incrémente le stockage utilisé par un utilisateur."""
+        result = await self.db.execute(
+            update(UserStorage)
+            .where(UserStorage.user_id == user_id)
+            .values(
+                storage_used_bytes=UserStorage.storage_used_bytes + size
+            )
+        )
+
+        if result.rowcount == 0:
+            raise ValueError("UserStorage not found")
 
     async def commit(self):
         await self.db.commit()
@@ -102,12 +116,27 @@ class FileDAO:
     # Status transitions
     # ------------------------
 
-    async def soft_delete(self, file: File):
-        """Marque un fichier/dossier comme supprimé (soft delete)."""
+    async def soft_delete(self, file: File, user_id: int):
+        """Soft delete """
+        if not file.is_directory:
+            await self.decrease_user_storage_used_bytes(user_id, file.size_bytes)
         file.status = "deleted"
         file.updated_at = datetime.now(timezone.utc)
         file.user_id = None
         await self.db.flush()
+
+    async def decrease_user_storage_used_bytes(self, user_id: int, size: int):
+        """Décrémente le stockage utilisé par un utilisateur."""
+        result = await self.db.execute(
+            update(UserStorage)
+            .where(UserStorage.user_id == user_id)
+            .values(
+                storage_used_bytes=UserStorage.storage_used_bytes - size
+            )
+        )
+
+        if result.rowcount == 0:
+            raise ValueError("UserStorage not found")
 
     async def soft_delete_workspace_files(self, user_id: int):
         stmt = (

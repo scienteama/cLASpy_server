@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from fastapi import HTTPException
 from app.dao.user_dao import UserDAO
-from app.models.user import User
+from app.models.user import User, UserStorage
 from app.schemas.role_schema import UserRole
-from app.schemas.user_schema import UserBase, UserIn, UserOut, UserUpdate
+from app.schemas.user_schema import UserBase, UserIn, UserOut, UserStorageDTO, UserUpdate
 from app.services.files_service import FileService
 from app.utils.auth_utils import hash_password, raise_auth_exception
 from typing import List
@@ -34,18 +34,33 @@ class UserService:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
+        user.storage = UserStorage(storage_used_bytes=0)
         created_user = await self.userDAO.create(user)
 
         return UserOut.model_validate(created_user)
 
     # --- READ ---
     async def get_user_by_id(self, user_id: int) -> UserOut:
-        """
-        Récupère un utilisateur par son ID.
-        """
         user = await self.userDAO.get_by_id(user_id)
-        return UserOut.model_validate(user)
 
+        storage = await self.userDAO.get_user_storage_by_user_id(user_id)
+        u_storage = (
+            UserStorageDTO.model_validate(storage)
+            if storage else None
+        )
+
+        return UserOut(
+            id=user.id,
+            firstname=user.firstname,
+            lastname=user.lastname,
+            email=user.email,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            last_login=user.last_login,
+            role_id=user.role_id,
+            storage=u_storage
+        )
+    
     async def get_all_users(self) -> List[UserOut]:
         """
         Retourne la liste complète des utilisateurs.

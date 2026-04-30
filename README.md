@@ -58,12 +58,12 @@ poetry run ruff check . --fix
 
 Database migrations are managed using Alembic. To create a new migration, run:
 ``` bash
-alembic revision --autogenerate -m "Migration message"
+poetry run alembic -c db/alembic.ini revision --autogenerate -m "Migration message"
 ```
 
 To apply migrations, run:
 ``` bash
-alembic upgrade head
+poetry run alembic -c db/alembic.ini upgrade head
 ```
 
 ## TaskRunner 
