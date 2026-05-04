@@ -46,15 +46,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # USER AUTH
         # ─────────────────────────────────────────────
 
-        token = request.cookies.get("token") or request.headers.get("Authorization")
+        token = request.cookies.get("token")
         if not token:
             raise_auth_exception("Token manquant")
 
-        user_data = verify_token(token)
-        if not user_data:
-            raise_auth_exception("Token invalide")
+        user_data, exp = verify_token(token)
 
-        # Attach user to request
         request.state.user = user_data
+        request.state.token_exp = exp
 
         return await call_next(request)

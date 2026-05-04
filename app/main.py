@@ -5,7 +5,7 @@ import socketio
 from app.api.middlewares.auth_middleware import AuthMiddleware
 from app.api.middlewares.utils_middleware import UtilsMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import get_settings
+from app.core.config import get_settings, print_banner
 from app.core.provider import get_ws_service
 from app.core.registry import RouterRegistry
 from app.database import engine
@@ -19,9 +19,8 @@ from app.api.routers.config_router import router as config_router
 from app.api.routers.events_router import router as events_router
 from app.schemas.error_schema import ErrorResponse
 
+
 # Lifespan pour FastAPI
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Création de la connexion à la DB au démarrage
@@ -76,6 +75,7 @@ if __name__ == "__main__":
     import uvicorn
     from app.core.config import get_settings
 
+    print_banner()
     config = get_settings()
 
     use_https = config.ENV != "production"
@@ -85,6 +85,8 @@ if __name__ == "__main__":
         host=config.HOST,
         port=config.PORT,
         reload=(config.ENV == "development"),
+        log_config=config.get_log_config(),
+        log_level="debug" if config.ENV == "development" else "info",
         ssl_keyfile=(config.PROJECT_ROOT / "certificats/claspy_key.pem" if use_https else None),
         ssl_certfile=(config.PROJECT_ROOT / "certificats/claspy_cert.pem" if use_https else None),
     )

@@ -136,6 +136,21 @@ cffi = [
 ]
 
 [[package]]
+name = "art"
+version = "6.5"
+description = "ASCII Art Library For Python"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "art-6.5-py3-none-any.whl", hash = "sha256:70706408144c45c666caab690627d5c74aea7b6c7ce8cc968408ddeef8d84afd"},
+    {file = "art-6.5.tar.gz", hash = "sha256:a98d77b42c278697ec6cf4b5bdcdfd997f6b2425332da078d4e31e31377d1844"},
+]
+
+[package.extras]
+dev = ["bandit (>=1.5.1)", "coverage (>=4.1)", "pydocstyle (>=3.0.0)", "vulture (>=1.0)"]
+
+[[package]]
 name = "asyncpg"
 version = "0.31.0"
 description = "An asyncio PostgreSQL driver"
@@ -2087,4 +2102,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "5a4ab0dd66e04ca52aca255c02fa370cc31a741d92d308ab793604b5cc614261"
+content-hash = "803dbfdac38ce8f7af4aae00310e311a92586b2bf2dec4ed78428297cf4f95d6"

@@ -1,6 +1,9 @@
 from functools import lru_cache
+import os
+import tomllib
 from pydantic_settings import BaseSettings
 from pathlib import Path
+from art import text2art
 
 
 class Settings(BaseSettings):
@@ -57,6 +60,72 @@ class Settings(BaseSettings):
                 "ALGORITHM",
             }
         )
+
+    def get_log_config(self):
+        return {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "default": {
+                    "()": "uvicorn.logging.DefaultFormatter",
+                    "fmt": "%(asctime)s | %(levelprefix)s %(message)s",
+                    "datefmt": "%Y-%m-%d %H:%M:%S",
+                },
+                "access": {
+                    "()": "uvicorn.logging.AccessFormatter",
+                    "fmt": '%(asctime)s | %(levelprefix)s [Access] "%(request_line)s" %(status_code)s',
+                    "datefmt": "%Y-%m-%d %H:%M:%S",
+                },
+            },
+            "handlers": {
+                "default": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                },
+                "access": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "access",
+                },
+            },
+            "loggers": {
+                "uvicorn.error": {
+                    "handlers": ["default"],
+                    "level": "INFO",
+                    "propagate": False,
+                },
+                "uvicorn.access": {
+                    "handlers": ["access"],
+                    "level": "INFO",
+                    "propagate": False,
+                },
+                "app": {
+                    "handlers": ["default"],
+                    "level": "INFO",
+                    "propagate": False,
+                },
+            },
+        }
+
+
+def print_banner():
+
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    app_version = data["project"]["version"]
+    description = data["project"]["description"]
+
+    print("======================================================================")
+    print(
+        text2art(
+            "CLASPY-T",
+            space=1,
+        )
+    )
+    print(f" Version : {app_version}")
+    print(f" Description : {description}")
+    print(f" Env : {os.getenv('ENV', 'development')}")
+    print("======================================================================")
 
 
 @lru_cache()

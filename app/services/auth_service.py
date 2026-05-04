@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import logging
 from fastapi import Response
 import jwt
 from app.core.config import get_settings
@@ -16,6 +17,7 @@ class AuthService:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
         self.config = get_settings()
+        self.log = logging.getLogger("app")
 
     async def authenticate(self, email: str, password: str) -> UserOut:
         user = await self.user_service.get_full_user_by_email(email)
@@ -28,16 +30,22 @@ class AuthService:
             raise_auth_exception("Email ou mot de passe incorrect")
 
     async def create_access_token(self, user: UserOut) -> Token:
-        to_encode = {
-            "user": TokenData(id=user.id, email=user.email, role_id=user.role_id).model_dump()
-        }
         try:
             expire_minutes = max(int(self.config.ACCESS_TOKEN_EXPIRE_MINUTES), 1)
         except (TypeError, ValueError):
             expire_minutes = 30
+
         expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
-        to_encode["exp"] = expire
+
+        to_encode = {
+            "user": TokenData(id=user.id, email=user.email, roleId=user.role_id).model_dump(
+                by_alias=True
+            ),
+            "exp": int(expire.timestamp()),
+        }
+
         encoded_jwt = jwt.encode(to_encode, self.config.SECRET_KEY, algorithm=self.config.ALGORITHM)
+
         return Token(access_token=encoded_jwt, token_type="bearer")
 
     async def clear_auth_cookie(self, res: Response, key: str) -> str:

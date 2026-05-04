@@ -148,8 +148,7 @@ class FileDAO:
             .where(UserStorage.user_id == user_id)
             .values(
                 storage_used_bytes=func.greatest(
-                    cast(0, BigInteger),
-                    UserStorage.storage_used_bytes - size
+                    cast(0, BigInteger), UserStorage.storage_used_bytes - size
                 )
             )
         )

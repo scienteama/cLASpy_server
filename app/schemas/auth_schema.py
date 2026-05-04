@@ -1,6 +1,6 @@
 from typing import Any
 from fastapi import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Token(BaseModel):
@@ -11,7 +11,13 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     id: int
     email: str
-    role_id: int
+    role_id: int = Field(..., alias="roleId")
+
+
+class AuthResponse(BaseModel):
+    isAuthenticated: bool
+    exp: int
+    sessionUserData: TokenData | None = None
 
 
 class CookieConfig(BaseModel):
@@ -20,7 +26,7 @@ class CookieConfig(BaseModel):
     http_only: bool = True
     secure: bool = True
     samesite: str = "None"
-    max_age_minutes: int = 30
+    max_age_minutes: int
 
     @property
     def max_age(self) -> int:

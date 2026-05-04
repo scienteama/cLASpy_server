@@ -1,3 +1,5 @@
+import logging
+
 import socketio
 from typing import Dict
 from app.utils.auth_utils import verify_token
@@ -6,8 +8,8 @@ from app.utils.auth_utils import verify_token
 class SocketIOService:
     def __init__(self):
         self.sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
-
         self.active_users: Dict[int, str] = {}
+        self.log = logging.getLogger("app")
 
     async def connect(self, sid: str, environ):
         try:
@@ -17,19 +19,19 @@ class SocketIOService:
             if not token:
                 return False
 
-            user = verify_token(token)
-            user_id = user.id
+            user_data, exp = verify_token(token)
+            user_id = user_data.id
 
             self.active_users[user_id] = sid
 
             await self.sio.save_session(sid, {"user_id": user_id})
             await self.sio.enter_room(sid, f"user:{user_id}")
 
-            print(f"[WS] User {user_id} connected (sid={sid})")
+            self.log.info(f"[WebSocket] User {user_id} connected (sid={sid})")
             return True
 
         except Exception as e:
-            print(f"[WS] Auth error: {e}")
+            self.log.error(f"[WebSocket] Auth error: {e}")
             return False
 
     def _extract_token(self, cookie_header: str) -> str | None:
@@ -49,7 +51,7 @@ class SocketIOService:
                 del self.active_users[uid]
                 break
 
-        print(f"[WS] disconnect sid={sid} user={user_id}")
+        self.log.info(f"[WebSocket] disconnect sid={sid} user={user_id}")
 
     async def send_all(self, event: str, payload: dict):
         await self.sio.emit(event, payload)
