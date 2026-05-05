@@ -1,5 +1,5 @@
 from typing import Generic, Optional, TypeVar
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic.generics import GenericModel
 
 T = TypeVar("T")
@@ -16,3 +16,8 @@ class ApiResponse(GenericModel, Generic[T]):
 
     class Config:
         json_schema_extra = {"example": {"result": "Opération réussie", "data": {}, "isOk": "True"}}
+
+
+class MetricPoint(BaseModel):
+    t: float
+    v: float

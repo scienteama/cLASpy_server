@@ -7,6 +7,8 @@ PUBLIC_ROUTES = {
     "/api/auth/login",
     "/api/auth/check-session",
     "/api/modules/list/claspy-modules",
+    "/api/metrics/cpu/history",
+    "/api/metrics/memory/history",
 }
 
 SERVICE_ROUTES = {
