@@ -18,6 +18,8 @@ dist/
 *.egg-info/
 pip-wheel-metadata/
 wheels/
+nuitkabuild/
+nuitka_cmd.txt
 
 # Editor / IDE
 .vscode/

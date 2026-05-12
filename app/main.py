@@ -6,7 +6,7 @@ import socketio
 from app.api.middlewares.auth_middleware import AuthMiddleware
 from app.api.middlewares.utils_middleware import UtilsMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import get_settings, print_banner
+from app.core.config import get_settings
 from app.core.provider import get_ws_service
 from app.core.registry import RouterRegistry
 from app.core.tasks import metrics_loop
@@ -83,23 +83,3 @@ app.add_exception_handler(RequestValidationError, ErrorResponse.validation_excep
 app.add_exception_handler(Exception, ErrorResponse.generic_exception_handler)
 
 socket_app = socketio.ASGIApp(ws_service.sio, app, socketio_path="socket.io")
-
-if __name__ == "__main__":
-    import uvicorn
-    from app.core.config import get_settings
-
-    print_banner()
-    config = get_settings()
-
-    use_https = config.ENV != "production"
-
-    uvicorn.run(
-        "app.main:socket_app",
-        host=config.HOST,
-        port=config.PORT,
-        reload=(config.ENV == "development"),
-        log_config=config.get_log_config(),
-        log_level="debug" if config.ENV == "development" else "info",
-        ssl_keyfile=(config.PROJECT_ROOT / "certificats/claspy_key.pem" if use_https else None),
-        ssl_certfile=(config.PROJECT_ROOT / "certificats/claspy_cert.pem" if use_https else None),
-    )

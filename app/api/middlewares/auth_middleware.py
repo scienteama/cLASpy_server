@@ -1,7 +1,7 @@
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import get_settings
-from app.utils.auth_utils import raise_auth_exception, verify_token
+from app.utils.auth_utils import extract_token, raise_auth_exception, verify_token
 
 PUBLIC_ROUTES = {
     "/api/auth/login",
@@ -48,7 +48,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # USER AUTH
         # ─────────────────────────────────────────────
 
-        token = request.cookies.get("token")
+        token = extract_token(request)
         if not token:
             raise_auth_exception("Token manquant")
 

@@ -5,7 +5,7 @@ import jwt
 from pwdlib import PasswordHash
 from app.core.config import get_settings
 from app.schemas.auth_schema import TokenData
-
+from fastapi import Request
 
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""
@@ -22,6 +22,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Paramètres invalides")
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
+
+
+def extract_token(request : Request):
+
+    # Cookie
+    token = request.cookies.get("token")
+
+    # Authorization header
+    if not token:
+        auth = request.headers.get("Authorization", "")
+
+        if auth.startswith("Bearer "):
+            token = auth.replace("Bearer ", "", 1).strip()
+
+    return token
 
 
 def verify_token(token: str) -> tuple[TokenData, int]:

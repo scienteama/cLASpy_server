@@ -11,12 +11,26 @@ class SocketIOService:
         self.active_users: Dict[int, str] = {}
         self.log = logging.getLogger("app")
 
-    async def connect(self, sid: str, environ):
+    async def connect(self, sid: str, environ, auth=None):
         try:
+            token = None
+
+            # Cookie
             cookie_header = environ.get("HTTP_COOKIE", "")
             token = self._extract_token(cookie_header)
 
+            # Socket.IO auth
+            if not token and isinstance(auth, dict):
+                token = auth.get("token")
+
+            # fallback
             if not token:
+                env_auth = environ.get("auth")
+                if isinstance(env_auth, dict):
+                    token = env_auth.get("token")
+
+            if not token:
+                self.log.warning("No token provided")
                 return False
 
             user_data, exp = verify_token(token)
@@ -62,8 +76,8 @@ class SocketIOService:
 
     def register_handlers(self):
         @self.sio.event
-        async def connect(sid, environ):
-            return await self.connect(sid, environ)
+        async def connect(sid, environ, auth=None):
+            return await self.connect(sid, environ, auth)
 
         @self.sio.event
         async def disconnect(sid):

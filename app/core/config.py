@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     HOST: str = "localhost"
 
-    ALLOWED_ORIGINS: list[str] = ["https://localhost:8081", "https://127.0.0.1:8081"]
+    ALLOWED_ORIGINS: list[str] = ["https://localhost:8081", "https://127.0.0.1:8081", "http://localhost:3000", "http://127.0.0.1:3000"]
 
     SECRET_KEY: str | None
     ALGORITHM: str = "HS256"
