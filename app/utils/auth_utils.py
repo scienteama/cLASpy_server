@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.schemas.auth_schema import TokenData
 from fastapi import Request
 
+
 def hash_password(password: str) -> str:
     """Hash a password using pwdlib."""
     if not password:
@@ -24,7 +25,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
 
 
-def extract_token(request : Request):
+def extract_token(request: Request):
 
     # Cookie
     token = request.cookies.get("token")

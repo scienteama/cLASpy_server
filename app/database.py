@@ -4,19 +4,14 @@ import sys
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
-from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from typing import AsyncGenerator
 
+from app.core.config import get_settings
 
-load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is not set")
-
+settings = get_settings()
+DATABASE_URL = settings.DATABASE_URL
 engine = create_async_engine(DATABASE_URL, echo=False)
 
 async_session = sessionmaker(

@@ -11,6 +11,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from app.database import Base
 from app.models import *
+from app.core.config import get_settings
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
@@ -19,12 +20,26 @@ fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+settings = get_settings()
+DATABASE_URL = settings.DATABASE_URL
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is required")
 
-SYNC_DATABASE_URL = DATABASE_URL.replace("asyncpg", "psycopg2")
+
+def get_sync_database_url(database_url: str) -> str:
+    if database_url.startswith("postgresql+asyncpg://"):
+        return database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    if database_url.startswith("sqlite+aiosqlite:///"):
+        return database_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
+    return database_url
+
+SYNC_DATABASE_URL = get_sync_database_url(DATABASE_URL)
+
+# Create sqlite db directory if needed
+if "sqlite://" in SYNC_DATABASE_URL:
+    db_dir = Path(BASE_DIR) / "data" / "db"
+    db_dir.mkdir(parents=True, exist_ok=True)
 
 
 def run_migrations_offline():

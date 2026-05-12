@@ -14,12 +14,18 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5432
     db_name: str | None = None
+    database_url: str | None = None
 
     ENV: str = "development"
     PORT: int = 8000
     HOST: str = "localhost"
 
-    ALLOWED_ORIGINS: list[str] = ["https://localhost:8081", "https://127.0.0.1:8081", "http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_ORIGINS: list[str] = [
+        "https://localhost:8081",
+        "https://127.0.0.1:8081",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
     SECRET_KEY: str | None
     ALGORITHM: str = "HS256"
@@ -56,9 +62,30 @@ class Settings(BaseSettings):
                 "db_port",
                 "db_host",
                 "db_name",
+                "database_url",
                 "SECRET_KEY",
                 "ALGORITHM",
             }
+        )
+
+    @property
+    def DATABASE_URL(self) -> str:
+        if self.database_url:
+            return self.database_url
+
+        if self.ENV == "desktop":
+            db_path = (self.PROJECT_ROOT / "data" / "db" / "desktop.db").resolve()
+            return f"sqlite+aiosqlite:///{db_path.as_posix()}"
+
+        if not self.db_user or not self.db_password or not self.db_name:
+            raise ValueError(
+                "DATABASE_URL is not set and PostgreSQL credentials are incomplete. "
+                "Define DATABASE_URL or the required db_user/db_password/db_name values."
+            )
+
+        return (
+            f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
 
     def get_log_config(self):
