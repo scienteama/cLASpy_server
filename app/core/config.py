@@ -74,7 +74,7 @@ class Settings(BaseSettings):
             return self.database_url
 
         if self.ENV == "desktop":
-            db_path = (self.PROJECT_ROOT / "data" / "db" / "desktop.db").resolve()
+            db_path = (self.PROJECT_ROOT / "data" / "db" / "claspy.db").resolve()
             return f"sqlite+aiosqlite:///{db_path.as_posix()}"
 
         if not self.db_user or not self.db_password or not self.db_name:

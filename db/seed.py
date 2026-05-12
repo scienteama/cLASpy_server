@@ -98,7 +98,7 @@ async def seed():
 
         await session.commit()
 
-        print("✅ Base initialisée avec succès !")
+        print("✅ Database seeded successfully!")
 
 if __name__ == "__main__":
     asyncio.run(seed())
