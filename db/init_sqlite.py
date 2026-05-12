@@ -26,6 +26,11 @@ async def init_sqlite():
         print(f"This script is for desktop mode only. Current ENV={settings.ENV}")
         return
 
+    # Ensure SQLite folder exists before opening the engine
+    if settings.ENV == "desktop":
+        db_path = Path(settings.DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Check if database already exists
     async with engine.begin() as conn:
         existing_db = await conn.run_sync(

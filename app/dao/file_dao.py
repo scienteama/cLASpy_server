@@ -2,7 +2,7 @@ from typing import Optional
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import BigInteger, case, cast, func, select, update
+from sqlalchemy import case, select, update
 from app.models.file import File
 from app.models.role import Role
 from app.models.user import User, UserStorage
@@ -24,33 +24,32 @@ class FileDAO:
             await self.increase_user_storage_used_bytes(user_id, file.size_bytes)
 
     async def increase_user_storage_used_bytes(self, user_id: int, size: int):
-        """Incrémente le stockage utilisé en respectant le quota."""
-
-        # Sous-requête pour récupérer le quota
-        quota = (
-            select(Role.max_space)
-            .join(User, User.role_id == Role.id)
-            .where(User.id == user_id)
-            .scalar_subquery()
-        )
 
         stmt = (
-            update(UserStorage)
-            .where(UserStorage.user_id == user_id)
-            .where(UserStorage.storage_used_bytes + size <= quota)
-            .values(storage_used_bytes=UserStorage.storage_used_bytes + size)
+            select(UserStorage.storage_used_bytes, Role.max_space)
+            .join(User, User.id == UserStorage.user_id)
+            .join(Role, Role.id == User.role_id)
+            .where(User.id == user_id)
         )
 
-        result = await self.db.execute(stmt)
+        row = await self.db.execute(stmt)
+        data = row.one_or_none()
 
-        if result.rowcount == 0:
-            exists_stmt = select(UserStorage).where(UserStorage.user_id == user_id)
-            exists = await self.db.scalar(exists_stmt)
+        if not data:
+            raise ValueError("Utilisateur non trouvé")
 
-            if not exists:
-                raise ValueError("Utilisateur non trouvé")
+        used_bytes, quota = data
 
+        if quota is not None and used_bytes + size > quota:
             raise ValueError("Quota d'espace atteint ou dépassé")
+
+        update_stmt = (
+            update(UserStorage)
+            .where(UserStorage.user_id == user_id)
+            .values(storage_used_bytes=used_bytes + size)
+        )
+
+        await self.db.execute(update_stmt)
 
     async def commit(self):
         await self.db.commit()
@@ -142,21 +141,33 @@ class FileDAO:
         await self.db.flush()
 
     async def decrease_user_storage_used_bytes(self, user_id: int, size: int):
-        """Décrémente le stockage utilisé par un utilisateur."""
+
         stmt = (
+            select(UserStorage.storage_used_bytes)
+            .where(UserStorage.user_id == user_id)
+        )
+
+        result = await self.db.execute(stmt)
+        current = result.scalar_one_or_none()
+
+        if current is None:
+            raise ValueError("Utilisateur non trouvé")
+
+        update_stmt = (
             update(UserStorage)
             .where(UserStorage.user_id == user_id)
             .values(
-                storage_used_bytes=func.greatest(
-                    cast(0, BigInteger), UserStorage.storage_used_bytes - size
+                storage_used_bytes=case(
+                    (
+                        UserStorage.storage_used_bytes - size < 0,
+                        0
+                    ),
+                    else_=UserStorage.storage_used_bytes - size
                 )
             )
         )
 
-        result = await self.db.execute(stmt)
-
-        if result.rowcount == 0:
-            raise ValueError("Utilisateur non trouvé")
+        await self.db.execute(update_stmt)
 
     async def soft_delete_workspace_files(self, user_id: int):
         stmt = (

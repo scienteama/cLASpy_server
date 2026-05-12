@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
-    SECRET_KEY: str | None
+    SECRET_KEY: str | None = None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     UPLOAD_DIR: str = "data/storage"
@@ -36,15 +36,34 @@ class Settings(BaseSettings):
     RECOVERY_DIR: str = "data/storage/recovery"
     DEFAULT_OUTPUT_DIR: str = "data/storage/outputs"
 
-    RABBITMQ_DEFAULT_USER: str | None
-    RABBITMQ_DEFAULT_PASS: str | None
-    REDIS_PASSWORD: str | None
-    SERVICE_TOKEN: str | None
-    FLOWER_USER: str | None
-    FLOWER_PWD: str | None
+    def model_post_init(self, __context__):
+        if self.ENV == "desktop":
+            data_dir = self.APP_DATA_DIR / "data"
+            self.UPLOAD_DIR = str(data_dir / "storage")
+            self.TEMP_DIR = str(data_dir / "storage" / "temp")
+            self.TRASH_DIR = str(data_dir / "storage" / "trash")
+            self.RECOVERY_DIR = str(data_dir / "storage" / "recovery")
+            self.DEFAULT_OUTPUT_DIR = str(data_dir / "storage" / "outputs")
+
+            for path in (
+                self.UPLOAD_DIR,
+                self.TEMP_DIR,
+                self.TRASH_DIR,
+                self.RECOVERY_DIR,
+                self.DEFAULT_OUTPUT_DIR,
+                str(data_dir / "db"),
+            ):
+                Path(path).mkdir(parents=True, exist_ok=True)
+
+    RABBITMQ_DEFAULT_USER: str | None = None
+    RABBITMQ_DEFAULT_PASS: str | None = None
+    REDIS_PASSWORD: str | None = None
+    SERVICE_TOKEN: str | None = None
+    FLOWER_USER: str | None = None
+    FLOWER_PWD: str | None = None
 
     model_config = {
-        "env_file": ".env",
+        "env_file": str(Path(__file__).resolve().parents[2] / ".env"),
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
@@ -52,6 +71,16 @@ class Settings(BaseSettings):
     @property
     def PROJECT_ROOT(self) -> Path:
         return Path(__file__).resolve().parents[2]
+
+    @property
+    def APP_DATA_DIR(self) -> Path:
+        if os.name == "nt":
+            base = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+        else:
+            base = os.getenv("XDG_DATA_HOME")
+        if not base:
+            return Path.home() / ".claspy_server"
+        return Path(base) / "claspy_server"
 
     def get_public_settings(self) -> dict:
         """Retourne les paramètres publics, excluant les champs sensibles."""
@@ -74,7 +103,7 @@ class Settings(BaseSettings):
             return self.database_url
 
         if self.ENV == "desktop":
-            db_path = (self.PROJECT_ROOT / "data" / "db" / "claspy.db").resolve()
+            db_path = (self.APP_DATA_DIR / "data" / "db" / "claspy.db").resolve()
             return f"sqlite+aiosqlite:///{db_path.as_posix()}"
 
         if not self.db_user or not self.db_password or not self.db_name:
