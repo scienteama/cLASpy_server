@@ -4,9 +4,9 @@ from app.core.config import get_settings, print_banner
 
 # This is the main entry point of the application. It initializes the database and starts the FastAPI server.
 def main():
-    print_banner()
     config = get_settings()
-
+    print_banner(config)
+    
     # use_https = config.ENV != "production"
 
     uvicorn.run(

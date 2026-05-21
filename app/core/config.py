@@ -163,9 +163,10 @@ class Settings(BaseSettings):
         }
 
 
-def print_banner():
+def print_banner(config: Settings):
+    project_file = Path(__file__).resolve().parents[2] / "pyproject.toml"
 
-    with open("pyproject.toml", "rb") as f:
+    with open(project_file, "rb") as f:
         data = tomllib.load(f)
 
     app_version = data["project"]["version"]
@@ -174,13 +175,12 @@ def print_banner():
     print("======================================================================")
     print(
         text2art(
-            "CLASPY-T",
-            space=1,
+            "CLASPY-T"
         )
     )
     print(f" Version : {app_version}")
     print(f" Description : {description}")
-    print(f" Env : {os.getenv('ENV', 'development')}")
+    print(f" Env : {config.ENV}")
     print("======================================================================")
 
 
