@@ -15,6 +15,7 @@ logger = logging.getLogger("app")
 async def metrics_loop(ws_service: SocketIOService):
     last_cpu_save = 0.0
     last_ram_save = 0.0
+    disk_path = os.path.abspath(os.sep)
 
     while True:
         if ws_service.active_users:
@@ -27,7 +28,7 @@ async def metrics_loop(ws_service: SocketIOService):
                 metrics = {
                     "cpu_percent": psutil.cpu_percent(interval=None),
                     "ram_percent": psutil.virtual_memory().percent,
-                    "disk_percent": psutil.disk_usage(os.path.abspath(os.sep)).percent,
+                    "disk_percent": psutil.disk_usage(disk_path).percent,
                     "timestamp": now.isoformat(),
                 }
             except Exception as e:

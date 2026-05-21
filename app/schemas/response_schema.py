@@ -21,3 +21,10 @@ class ApiResponse(GenericModel, Generic[T]):
 class MetricPoint(BaseModel):
     t: float
     v: float
+
+
+class DiskInfo(BaseModel):
+    total: int
+    used: int
+    free: int
+    percent: float
