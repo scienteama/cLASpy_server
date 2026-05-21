@@ -21,7 +21,11 @@ try:
     from app.utils.claspy_ml_utils import enrich_algorithm_params
 except ModuleNotFoundError:
     cLASpy_Classes = None
+    cLASpy_T = None
+    ClaspyTrainer = None
+    cLASpy_Core_version = None
     algorithms = None
+    nn = None
     enrich_algorithm_params = None
     pass
 
@@ -201,6 +205,9 @@ class ClaspyMLService:
 
         params.input_data = str(file_path)
         params.algo = self.claspy_t.shortname_algo(params.algorithm)
+
+        if self.config.ENV == "desktop":
+            params.no_worker = True
 
         state = await self.worker_service.get_worker_state(params.no_worker)
         if state.is_enabled and state.has_workers:

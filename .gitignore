@@ -20,6 +20,7 @@ pip-wheel-metadata/
 wheels/
 nuitkabuild/
 nuitka_cmd.txt
+Output/
 
 # Editor / IDE
 .vscode/
