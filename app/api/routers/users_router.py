@@ -9,6 +9,19 @@ from app.services.users_service import UserService
 router = APIRouter()
 
 
+@router.post("/add-first", response_model=ApiResponse[UserOut])
+async def register_first_user(
+    req: Request,
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    user: UserIn = Body(...),
+):
+    """
+    Crée le premier utilisateur (admin) si aucun utilisateur n'existe.
+    """
+    new_user = await user_service.create_first_user(user)
+    return ApiResponse[UserOut](data=new_user)
+
+
 @router.post("/add", response_model=ApiResponse[UserOut])
 async def register_user(
     req: Request,
@@ -84,3 +97,12 @@ async def get_all_users(user_service: Annotated[UserService, Depends(get_user_se
     """
     users = await user_service.get_all_users()
     return ApiResponse[List[UserOut]](data=users)
+
+
+@router.get("/count", response_model=ApiResponse[int])
+async def get_user_count(user_service: Annotated[UserService, Depends(get_user_service)]):
+    """
+    Récupère le nombre total d'utilisateurs.
+    """
+    count = await user_service.get_user_count()
+    return ApiResponse[int](data=count)

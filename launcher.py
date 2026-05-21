@@ -6,7 +6,7 @@ from app.core.config import get_settings, print_banner
 def main():
     config = get_settings()
     print_banner(config)
-    
+
     # use_https = config.ENV != "production"
 
     uvicorn.run(

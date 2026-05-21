@@ -4,11 +4,13 @@ from app.core.config import get_settings
 from app.utils.auth_utils import extract_token, raise_auth_exception, verify_token
 
 PUBLIC_ROUTES = {
+    "/api/users/add-first",
     "/api/auth/login",
     "/api/auth/check-session",
     "/api/modules/list/claspy-modules",
     "/api/metrics/cpu/history",
     "/api/metrics/memory/history",
+    "/api/settings/first-launch-completed",
 }
 
 SERVICE_ROUTES = {

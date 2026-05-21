@@ -20,6 +20,33 @@ class UserService:
         self.file_service = file_service
 
     # --- CREATE ---
+
+    async def create_first_user(self, user_data: UserIn) -> UserOut:
+        """
+        Crée le premier utilisateur (admin) si aucun utilisateur n'existe.
+        """
+        existing_users = await self.userDAO.get_all_users()
+        if existing_users:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="La base de données utilisateurs n'est pas vide",
+            )
+
+        hashed_password = hash_password(user_data.password)
+        user = User(
+            firstname=user_data.firstname,
+            lastname=user_data.lastname,
+            email=user_data.email,
+            password=hashed_password,
+            role_id=UserRole.admin,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        user.storage = UserStorage(storage_used_bytes=0)
+        created_user = await self.userDAO.create(user)
+
+        return UserOut.model_validate(created_user)
+
     async def create_user(self, user_data: UserIn) -> UserOut:
         """
         Crée un nouvel utilisateur en hachant son mot de passe.
@@ -64,6 +91,12 @@ class UserService:
         """
         users: List[User] = await self.userDAO.get_all_users()
         return [UserOut.model_validate(u) for u in users]
+
+    async def get_user_count(self) -> int:
+        """
+        Retourne le nombre total d'utilisateurs.
+        """
+        return await self.userDAO.get_user_count()
 
     async def get_user_by_email(self, email: str) -> UserOut:
         """

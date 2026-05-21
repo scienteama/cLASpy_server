@@ -53,6 +53,11 @@ async def seed():
 
         await session.commit()
 
+        # Skip seeding users in desktop mode
+        if ENV == "desktop":
+            print("Skipping user seeding in desktop mode.")
+            return  
+
         # ---- Utilisateurs par défaut ----
         DEFAULT_USERS = {
             "admin": ("Admin", "System"),
@@ -67,7 +72,7 @@ async def seed():
             {
                 "firstname": fn,
                 "lastname": ln,
-                "email": f"{role}@claspy.{ENV[0:3]}",
+                "email": f"{role}@claspy.local",
                 "password": BASE_PASSWORD,
                 "role_name": role,
             }

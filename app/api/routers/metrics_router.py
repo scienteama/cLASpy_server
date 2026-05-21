@@ -14,6 +14,7 @@ def get_cpu_history():
     result = list(cpu_history)
     return ApiResponse[List[MetricPoint]](data=result)
 
+
 @router.get("/disk/infos", response_model=ApiResponse[DiskInfo])
 def get_disk_infos():
     disk_path = os.path.abspath(os.sep)
@@ -22,7 +23,7 @@ def get_disk_infos():
         total=disk_usage.total,
         used=disk_usage.used,
         free=disk_usage.free,
-        percent=disk_usage.percent
+        percent=disk_usage.percent,
     )
     return ApiResponse[DiskInfo](data=result)
 

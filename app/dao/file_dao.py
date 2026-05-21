@@ -142,10 +142,7 @@ class FileDAO:
 
     async def decrease_user_storage_used_bytes(self, user_id: int, size: int):
 
-        stmt = (
-            select(UserStorage.storage_used_bytes)
-            .where(UserStorage.user_id == user_id)
-        )
+        stmt = select(UserStorage.storage_used_bytes).where(UserStorage.user_id == user_id)
 
         result = await self.db.execute(stmt)
         current = result.scalar_one_or_none()
@@ -158,11 +155,8 @@ class FileDAO:
             .where(UserStorage.user_id == user_id)
             .values(
                 storage_used_bytes=case(
-                    (
-                        UserStorage.storage_used_bytes - size < 0,
-                        0
-                    ),
-                    else_=UserStorage.storage_used_bytes - size
+                    (UserStorage.storage_used_bytes - size < 0, 0),
+                    else_=UserStorage.storage_used_bytes - size,
                 )
             )
         )

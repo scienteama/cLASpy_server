@@ -71,3 +71,8 @@ class UserDAO:
         result = await self.db.execute(select(User))
         users: List[User] = result.scalars().all()
         return users
+
+    async def get_user_count(self) -> int:
+        result = await self.db.execute(select(User))
+        users: List[User] = result.scalars().all()
+        return len(users)

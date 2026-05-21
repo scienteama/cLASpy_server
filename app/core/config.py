@@ -173,11 +173,7 @@ def print_banner(config: Settings):
     description = data["project"]["description"]
 
     print("======================================================================")
-    print(
-        text2art(
-            "CLASPY-T"
-        )
-    )
+    print(text2art("CLASPY-T"))
     print(f" Version : {app_version}")
     print(f" Description : {description}")
     print(f" Env : {config.ENV}")

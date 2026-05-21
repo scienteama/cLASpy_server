@@ -52,7 +52,6 @@ async def init_sqlite():
     print("✅ SQLite database initialized successfully!")
 
     if seed.exists():
-        print("Running seed script...")
         import importlib.util
 
         spec = importlib.util.spec_from_file_location("seed", seed)
