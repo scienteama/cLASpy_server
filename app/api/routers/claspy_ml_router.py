@@ -4,7 +4,7 @@ from fastapi.params import Form
 from app.core.provider import get_claspyml_service
 from app.schemas.response_schema import ApiResponse
 from app.schemas.sklearn_schema import AlgoParam, AlgoParamsResponse
-from app.schemas.train_schema import ModelInfo, PointCloudInfo, TrainParameters
+from app.schemas.train_schema import ModelInfo, PointCloudInfo, PredictParameters, TrainParameters
 from app.services.claspy_ml_service import ClaspyMLService
 
 router = APIRouter()
@@ -77,6 +77,20 @@ async def run_train_async(
     """
 
     result = await claspyML_service.run_train(req, train_params)
+    return ApiResponse[str | dict[str, Any]](data=result)
+
+
+@router.post("/run-prediction", response_model=ApiResponse[str | dict[str, Any]])
+async def run_prediction_async(
+    req: Request,
+    claspyML_service: Annotated[ClaspyMLService, Depends(get_claspyml_service)],
+    prediction_params: PredictParameters = Body(...),
+):
+    """
+    Lance une prédiction avec les paramètres spécifiés.
+    """
+
+    result = await claspyML_service.run_prediction(req, prediction_params)
     return ApiResponse[str | dict[str, Any]](data=result)
 
 

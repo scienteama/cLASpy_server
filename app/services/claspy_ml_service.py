@@ -7,7 +7,7 @@ import joblib
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from app.core.config import Settings, get_settings
-from app.schemas.train_schema import ModelInfo, PointCloudInfo, TrainParameters
+from app.schemas.train_schema import ModelInfo, PointCloudInfo, PredictParameters, TrainParameters
 from app.services.files_service import FileService
 from app.services.worker_service import WorkerService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
@@ -181,6 +181,40 @@ class ClaspyMLService:
         if self.trainer is None:
             raise RuntimeError("ClaspyTrainer n'a pas été initialisé")
         return self.trainer.get_data_features()
+
+    async def run_prediction(self, req: Request, params: PredictParameters):
+        """
+        Lance une prédiction avec les paramètres spécifiés.
+        """
+
+        if not params.file_id or not params.model_id:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="Id fichier ou Id modèle invalide ou manquant",
+            )
+
+        params.user_id = int(req.state.user.id)
+        params.role_id = int(req.state.user.role_id)
+
+        file = await self.file_service.get_file_by_id(params.file_id)
+        file_path = await self.file_service.compute_physical_path(file)
+        model_file = await self.file_service.get_file_by_id(params.model_id)
+        model_path = await self.file_service.compute_physical_path(model_file)
+
+        if params.folder_id != "root":
+            folder = await self.file_service.get_file_by_id(params.folder_id)
+            params.output = str(await self.file_service.compute_physical_path(folder))
+        else:
+            params.output = str(model_path.parent)
+
+        params.input_data = str(file_path)
+        params.model = str(model_path)
+
+        result = self.claspy_t.predict(arguments=params)
+
+        return await self.file_service.save_ml_result(
+            result, params.user_id, params.role_id, params.folder_id, ml_type="prediction"
+        )
 
     async def run_train(self, req: Request, params: TrainParameters):
         """

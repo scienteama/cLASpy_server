@@ -56,3 +56,16 @@ class TrainParameters(BaseModel):
 
     class Config:
         validate_by_name = True
+
+
+class PredictParameters(BaseModel):
+    file_id: str = Field(..., alias="inputFileId")
+    model_id: str = Field(..., alias="modelFileId")
+    folder_id: str = Field(..., alias="folderId")
+    is_from_api: bool = True
+    input_data: Optional[str] = None
+    output: Optional[str] = None
+    model: Optional[str] = None
+    user_id: Optional[int] = None
+    role_id: Optional[int] = None
+    config: Optional[Any] = None

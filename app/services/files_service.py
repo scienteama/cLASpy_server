@@ -155,12 +155,13 @@ class FileService:
         user_id: int,
         role_id: int,
         parent_id: uuid.UUID | str | None = None,
+        ml_type: str = "train",
     ):
 
         # Crée un dossier par défaut si parent_id == 'root'
         if parent_id == "root":
             parent_dir = await self.create_directory(
-                user_id, role_id, f"train_{datetime.now().strftime('%y%m%d_%H%M')}"
+                user_id, role_id, f"{ml_type}_{datetime.now().strftime('%y%m%d_%H%M')}"
             )
             parent_id = parent_dir.id
             physical_folder = await self.compute_physical_path(parent_dir)
