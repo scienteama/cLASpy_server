@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Column, DateTime, Integer, String
+from sqlalchemy import BigInteger, Column, Integer, String
 from sqlalchemy.orm import relationship
 from app.database import Base
+from app.utils.db_conversion import UTCDateTime
 
 
 class Role(Base):
@@ -11,11 +12,9 @@ class Role(Base):
     name = Column(String(50), unique=True, index=True, nullable=False)
     description = Column(String(255))
     max_space = Column(BigInteger, nullable=True)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(UTCDateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
-        DateTime(timezone=True),
+        UTCDateTime,
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
