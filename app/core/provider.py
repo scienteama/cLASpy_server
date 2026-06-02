@@ -98,5 +98,6 @@ def get_worker_service(
 def get_claspyml_service(
     file_service: Annotated[FileService, Depends(get_file_service)],
     m_service: Annotated[WorkerService, Depends(get_worker_service)],
+    ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
 ) -> ClaspyMLService:
-    return ClaspyMLService(file_service, m_service)
+    return ClaspyMLService(file_service, m_service, ws_service)

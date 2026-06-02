@@ -1,10 +1,3 @@
-import os
-import sys
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
 import asyncio
 from datetime import datetime, timezone
 from sqlalchemy import select
@@ -14,15 +7,17 @@ from app.database import engine
 from app.models.user import User, UserStorage
 from app.models.role import Role
 from app.utils.auth_utils import hash_password
-from dotenv import load_dotenv
 
-
-load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-
-ENV = os.getenv("ENV")
-
+def load_env_variables():
+    from app.core.config import get_settings
+    settings = get_settings()
+    print(f"Loaded environment variables for ENV={settings.ENV}")
+    return settings
 
 async def seed():
+
+    settings = load_env_variables()
+
     async_session = sessionmaker(
         bind=engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -54,7 +49,7 @@ async def seed():
         await session.commit()
 
         # Skip seeding users in desktop mode
-        if ENV == "desktop":
+        if settings.ENV == "desktop":
             print("Skipping user seeding in desktop mode.")
             return  
 

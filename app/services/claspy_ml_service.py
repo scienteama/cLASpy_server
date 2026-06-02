@@ -1,16 +1,22 @@
+import asyncio
+from contextlib import redirect_stdout
 from http import HTTPStatus
 import inspect
 from pathlib import Path
+import threading
 from typing import List, Optional, Dict
 from fastapi import HTTPException, Request, UploadFile
 import joblib
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from app.core.config import Settings, get_settings
+from app.core.console import SocketConsole
 from app.schemas.train_schema import ModelInfo, PointCloudInfo, PredictParameters, TrainParameters
 from app.services.files_service import FileService
 from app.services.worker_service import WorkerService
+from app.services.ws_service import SocketIOService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
+from concurrent.futures import Future
 
 try:
     from cLASpy_ML import cLASpy_Classes
@@ -35,7 +41,9 @@ class ClaspyMLService:
     TODO : Renseigner la doc.
     """
 
-    def __init__(self, file_service: FileService, worker_service: WorkerService):
+    def __init__(
+        self, file_service: FileService, worker_service: WorkerService, ws_service: SocketIOService
+    ):
         if ClaspyTrainer is not None:
             self.core_version = cLASpy_Core_version
             self.claspy_classes = cLASpy_Classes
@@ -50,6 +58,7 @@ class ClaspyMLService:
 
         self.file_service = file_service
         self.worker_service = worker_service
+        self.ws_service = ws_service
         self.config: Settings = get_settings()
 
     def get_core_version(self) -> str:
@@ -210,7 +219,19 @@ class ClaspyMLService:
         params.input_data = str(file_path)
         params.model = str(model_path)
 
-        result = self.claspy_t.predict(arguments=params)
+        loop = asyncio.get_running_loop()
+        console = SocketConsole(self.ws_service, loop)
+        result_future = Future()
+
+        def task():
+            with redirect_stdout(console):
+                result = self.claspy_t.predict(arguments=params)
+                result_future.set_result(result)
+
+        thread = threading.Thread(target=task)
+        thread.start()
+
+        result: dict[str, Path] | None = await asyncio.to_thread(result_future.result)
 
         return await self.file_service.save_ml_result(
             result, params.user_id, params.role_id, params.folder_id, ml_type="prediction"
@@ -254,7 +275,21 @@ class ClaspyMLService:
             return f"Tâche n'° {task_id} ajoutée avec succès."
 
         elif params.no_worker:
-            result = self.claspy_t.train(arguments=params)
+
+            loop = asyncio.get_running_loop()
+            console = SocketConsole(self.ws_service, loop)
+            result_future = Future()
+
+            def task():
+                with redirect_stdout(console):
+                    result = self.claspy_t.train(arguments=params)
+                    result_future.set_result(result)
+
+            thread = threading.Thread(target=task)
+            thread.start()
+
+            result: dict[str, Path] | None = await asyncio.to_thread(result_future.result)
+
             return await self.file_service.save_ml_result(
                 result, params.user_id, params.role_id, params.folder_id
             )
