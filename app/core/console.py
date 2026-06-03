@@ -2,6 +2,7 @@ import sys
 import io
 import asyncio
 
+
 class SocketConsole(io.TextIOBase):
 
     def __init__(self, ws_service, loop):

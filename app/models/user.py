@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Column, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from app.database import Base
-from app.utils.db_conversion import UTCDateTime
 
 
 class User(Base):
@@ -13,14 +12,16 @@ class User(Base):
     lastname = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
-    created_at = Column(UTCDateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        UTCDateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    last_login = Column(UTCDateTime)
+    last_login = Column(DateTime(timezone=True), nullable=True)
     role_id = Column(Integer, ForeignKey("roles.id"))
 
     role = relationship("Role", back_populates="users")
@@ -45,9 +46,11 @@ class UserStorage(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     storage_used_bytes = Column(BigInteger, nullable=False, default=0)
-    created_at = Column(UTCDateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        UTCDateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),

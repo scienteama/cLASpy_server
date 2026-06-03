@@ -1,6 +1,4 @@
-from datetime import timezone
 import uuid
-from sqlalchemy import DateTime
 from sqlalchemy.types import TypeDecorator, CHAR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -33,20 +31,9 @@ class GUID(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         if value is None:
+            return None
+
+        if isinstance(value, uuid.UUID):
             return value
 
-        return uuid.UUID(value)
-
-
-class UTCDateTime(TypeDecorator):
-    impl = DateTime
-
-    def process_bind_param(self, value, dialect):
-        if value is not None and value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None and value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value
+        return uuid.UUID(str(value))

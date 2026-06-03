@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import List, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import Field
+from app.schemas.response_schema import UTCBaseModel
 
 
-class FileModel(BaseModel):
+class FileModel(UTCBaseModel):
     id: str
     name: str
     type: str = "file"
@@ -15,7 +16,7 @@ class FileModel(BaseModel):
     user_id: Optional[int] = None
 
 
-class FolderModel(BaseModel):
+class FolderModel(UTCBaseModel):
     id: str
     name: Optional[str] = None
     type: str = "folder"

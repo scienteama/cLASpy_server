@@ -1,9 +1,10 @@
 from typing import Annotated, Optional
 from pydantic import BaseModel, EmailStr, Field, constr
 from datetime import datetime
+from app.schemas.response_schema import UTCBaseModel
 
 
-class UserStorageDTO(BaseModel):
+class UserStorageDTO(UTCBaseModel):
     id: int
     user_id: int
     storage_used_bytes: int
@@ -15,7 +16,7 @@ class UserStorageDTO(BaseModel):
         validate_by_name = True
 
 
-class UserBase(BaseModel):
+class UserBase(UTCBaseModel):
     id: int
     firstname: str
     lastname: str
@@ -42,7 +43,7 @@ class UserIn(BaseModel):
         validate_by_name = True
 
 
-class UserOut(BaseModel):
+class UserOut(UTCBaseModel):
     id: int
     firstname: str
     lastname: str

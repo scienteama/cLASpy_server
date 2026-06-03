@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, Boolean, BigInteger, ForeignKey, Index
+from sqlalchemy import Column, DateTime, String, Boolean, BigInteger, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import uuid
 import hashlib
 from app.database import Base
-from app.utils.db_conversion import GUID, UTCDateTime
+from app.utils.db_conversion import GUID
 
 
 class File(Base):
@@ -24,9 +24,11 @@ class File(Base):
 
     status = Column(String, default="active")  # active | deleted | missing
 
-    created_at = Column(UTCDateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        UTCDateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),

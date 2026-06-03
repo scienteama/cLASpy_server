@@ -64,7 +64,7 @@ ENV=desktop
 poetry run python db/init_sqlite.py
 
 # Peupler la base avec les données par défaut
-poetry run python db/seed.py
+poetry run python -m db.seed
 ```
 
 La base SQLite sera créée dans `data/db/desktop.db`.

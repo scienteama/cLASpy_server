@@ -2,9 +2,10 @@ from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+from app.schemas.response_schema import UTCBaseModel
 
 
-class Role(BaseModel):
+class Role(UTCBaseModel):
     id: int
     name: str
     description: Optional[str]
