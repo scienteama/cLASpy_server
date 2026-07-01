@@ -1,3 +1,4 @@
+from app.schemas.notification_schema import NotificationType
 from http import HTTPStatus
 import os
 from pathlib import Path
@@ -13,14 +14,18 @@ from app.schemas.file_schema import FileModel, FileType, FolderModel
 from app.models.file import File
 from app.core.config import get_settings, Settings
 from app.schemas.user_schema import UserOut
+from app.services.notifications_service import NotificationService
 from app.services.ws_service import SocketIOService
 from app.utils.file_utils import detect_mimetype, match_file_type
 
 
 class FileService:
-    def __init__(self, file_dao: FileDAO, socket: SocketIOService):
+    def __init__(
+        self, file_dao: FileDAO, socket: SocketIOService, notif_service: NotificationService
+    ):
         self.file_dao = file_dao
         self.ws = socket
+        self.notif_service = notif_service
         self.config: Settings = get_settings()
 
         self.storage_root = Path(self.config.UPLOAD_DIR)
@@ -130,6 +135,13 @@ class FileService:
 
             await self.file_dao.commit()
 
+            await self.notif_service.create_notification(
+                user_id,
+                message=f"Le fichier '{db_file.logical_name}' a été uploadé avec succès",
+                notif_type=NotificationType.FILE_UPLOAD,
+                sender_id=None,
+            )
+
             return FileModel(
                 id=str(db_file.id),
                 name=db_file.logical_name,
@@ -219,6 +231,13 @@ class FileService:
             "parent_id": str(parent_id),
             "path": str(physical_folder) if physical_folder else None,
         }
+
+        await self.notif_service.create_notification(
+            user_id,
+            message=f"Entrainement ML terminé avec succès : {result.get('saved_files')[0]}",
+            notif_type=NotificationType.ML_TRAINING,
+            sender_id=None,
+        )
 
         return result
 
@@ -342,6 +361,14 @@ class FileService:
 
             if auto_commit:
                 await self.file_dao.commit()
+
+            await self.notif_service.create_notification(
+                user_id,
+                message=f"Le fichier '{root.logical_name}' a été supprimé avec succès",
+                notif_type=NotificationType.FILE_DELETE,
+                sender_id=None,
+            )
+
             return "Objet supprimé avec succès"
 
         except Exception:

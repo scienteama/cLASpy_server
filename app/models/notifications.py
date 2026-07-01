@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -8,8 +9,10 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     type = Column(String(50), nullable=False)
     message = Column(String(255), nullable=False)
@@ -23,6 +26,18 @@ class Notification(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship(
+        "User",
+        foreign_keys=[user_id],
+        back_populates="notifications",
+    )
+
+    sender = relationship(
+        "User",
+        foreign_keys=[sender_id],
+        back_populates="sent_notifications",
     )
 
     __table_args__ = (

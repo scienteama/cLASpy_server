@@ -2,9 +2,11 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dao.file_dao import FileDAO
+from app.dao.notif_dao import NotificationDAO
 from app.dao.role_dao import RoleDAO
 from app.database import get_async_db
 from app.dao.user_dao import UserDAO
+from app.services.notifications_service import NotificationService
 from app.services.role_service import RoleService
 from app.services.users_service import UserService
 from app.services.auth_service import AuthService
@@ -38,6 +40,12 @@ def get_file_dao(
     return FileDAO(db)
 
 
+def get_notification_dao(
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+) -> NotificationDAO:
+    return NotificationDAO(db)
+
+
 # ------------------------------------------------------------------
 # NO DEPENDENCIES SERVICES
 # ------------------------------------------------------------------
@@ -63,18 +71,27 @@ def get_ws_service() -> SocketIOService:
 # ------------------------------------------------------------------
 
 
+def get_notification_service(
+    notif_dao: Annotated[NotificationService, Depends(get_notification_dao)],
+    ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
+) -> NotificationService:
+    return NotificationService(notif_dao, ws_service)
+
+
 def get_file_service(
     file_dao: Annotated[FileDAO, Depends(get_file_dao)],
     ws: Annotated[SocketIOService, Depends(get_ws_service)],
+    notif_service: Annotated[NotificationService, Depends(get_notification_service)],
 ) -> FileService:
-    return FileService(file_dao, ws)
+    return FileService(file_dao, ws, notif_service)
 
 
 def get_user_service(
     user_dao: Annotated[UserDAO, Depends(get_user_dao)],
     file_service: Annotated[FileService, Depends(get_file_service)],
+    notif_service: Annotated[NotificationService, Depends(get_notification_service)],
 ) -> UserService:
-    return UserService(user_dao, file_service)
+    return UserService(user_dao, file_service, notif_service)
 
 
 def get_role_service(
@@ -98,6 +115,7 @@ def get_worker_service(
 def get_claspyml_service(
     file_service: Annotated[FileService, Depends(get_file_service)],
     m_service: Annotated[WorkerService, Depends(get_worker_service)],
+    notif_service: Annotated[NotificationService, Depends(get_notification_service)],
     ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
 ) -> ClaspyMLService:
-    return ClaspyMLService(file_service, m_service, ws_service)
+    return ClaspyMLService(file_service, m_service, notif_service, ws_service)

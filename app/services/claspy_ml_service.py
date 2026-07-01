@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.console import SocketConsole
 from app.schemas.train_schema import ModelInfo, PointCloudInfo, PredictParameters, TrainParameters
 from app.services.files_service import FileService
+from app.services.notifications_service import NotificationService
 from app.services.worker_service import WorkerService
 from app.services.ws_service import SocketIOService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
@@ -42,7 +43,11 @@ class ClaspyMLService:
     """
 
     def __init__(
-        self, file_service: FileService, worker_service: WorkerService, ws_service: SocketIOService
+        self,
+        file_service: FileService,
+        worker_service: WorkerService,
+        notif_service: NotificationService,
+        ws_service: SocketIOService,
     ):
         if ClaspyTrainer is not None:
             self.core_version = cLASpy_Core_version

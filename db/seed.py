@@ -62,12 +62,13 @@ async def seed():
         }
 
         BASE_PASSWORD = "Azerty1234!"
+        SUFFIX = 'dev' if settings.ENV == 'development' else 'prod'
 
         users_data = [
             {
                 "firstname": fn,
                 "lastname": ln,
-                "email": f"{role}@claspy.local",
+                "email": f"{role}@claspy.{SUFFIX}",
                 "password": BASE_PASSWORD,
                 "role_name": role,
             }

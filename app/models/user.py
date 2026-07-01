@@ -33,6 +33,20 @@ class User(Base):
         passive_deletes=True,
         lazy="immediate",
     )
+    notifications = relationship(
+        "Notification",
+        foreign_keys="Notification.user_id",
+        back_populates="user",
+        passive_deletes=True,
+        cascade="save-update, merge",
+    )
+    sent_notifications = relationship(
+        "Notification",
+        foreign_keys="Notification.sender_id",
+        back_populates="sender",
+        passive_deletes=True,
+        cascade="save-update, merge",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, firstname='{self.firstname}', lastname='{self.lastname}', role_id={self.role_id})>"

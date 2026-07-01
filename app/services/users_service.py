@@ -5,6 +5,7 @@ from app.models.user import User, UserStorage
 from app.schemas.role_schema import UserRole
 from app.schemas.user_schema import UserBase, UserIn, UserOut, UserStorageDTO, UserUpdate
 from app.services.files_service import FileService
+from app.services.notifications_service import NotificationService
 from app.utils.auth_utils import hash_password, raise_auth_exception
 from typing import List
 from datetime import datetime, timezone
@@ -15,9 +16,12 @@ class UserService:
     Service de gestion des utilisateurs.
     """
 
-    def __init__(self, user_dao: UserDAO, file_service: FileService):
+    def __init__(
+        self, user_dao: UserDAO, file_service: FileService, notif_service: NotificationService
+    ):
         self.userDAO = user_dao
         self.file_service = file_service
+        self.notif_service = notif_service
 
     # --- CREATE ---
 
