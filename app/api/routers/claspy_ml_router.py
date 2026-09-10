@@ -1,3 +1,6 @@
+from app.schemas.train_schema import FeatureComputationParameters
+from app.core.provider import get_claspyfeat_service
+from app.services.claspy_feat_service import ClaspyFeatService
 from typing import Annotated, Any, List
 from fastapi import APIRouter, Body, Depends, File, Request, UploadFile
 from fastapi.params import Form
@@ -77,6 +80,19 @@ async def run_train_async(
     """
 
     result = await claspyML_service.run_train(req, train_params)
+    return ApiResponse[str | dict[str, Any]](data=result)
+
+
+@router.post("/compute-features", response_model=ApiResponse[str | dict[str, Any]])
+async def compute_features_async(
+    req: Request,
+    claspyFeat_service: Annotated[ClaspyFeatService, Depends(get_claspyfeat_service)],
+    feature_computation_params: FeatureComputationParameters = Body(...),
+):
+    """
+    Lance le calcul des features avec les paramètres spécifiés.
+    """
+    result = await claspyFeat_service.compute_features(req, feature_computation_params)
     return ApiResponse[str | dict[str, Any]](data=result)
 
 

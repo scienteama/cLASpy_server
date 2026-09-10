@@ -27,6 +27,22 @@ class ModelInfo(BaseModel):
         validate_by_name = True
 
 
+class FeatureComputationParameters(BaseModel):
+    file_id: str = Field(..., alias="fileId")
+    folder_id: str = Field(..., alias="folderId")
+    input_data: Optional[str] = None
+    feature_names: List[str] = Field(..., alias="featureNames")
+    search_radius: List[float] = Field(..., alias="searchRadius")
+    n_jobs: int = Field(..., alias="nJobsCv")
+    batch_size: int = Field(..., alias="batchSize")
+    output: Optional[str] = None
+    user_id: Optional[int] = None
+    role_id: Optional[int] = None
+
+    class Config:
+        validate_by_name = True
+
+
 class TrainParameters(BaseModel):
     file_id: str = Field(..., alias="fileId")
     input_data: Optional[str] = None

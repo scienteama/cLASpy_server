@@ -1,3 +1,4 @@
+from app.services.claspy_feat_service import ClaspyFeatService
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,7 +116,14 @@ def get_worker_service(
 def get_claspyml_service(
     file_service: Annotated[FileService, Depends(get_file_service)],
     m_service: Annotated[WorkerService, Depends(get_worker_service)],
-    notif_service: Annotated[NotificationService, Depends(get_notification_service)],
     ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
 ) -> ClaspyMLService:
-    return ClaspyMLService(file_service, m_service, notif_service, ws_service)
+    return ClaspyMLService(file_service, m_service, ws_service)
+
+
+def get_claspyfeat_service(
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
+    notif_service: Annotated[NotificationService, Depends(get_notification_service)],
+) -> ClaspyFeatService:
+    return ClaspyFeatService(file_service, ws_service, notif_service)

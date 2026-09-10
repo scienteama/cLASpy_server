@@ -20,7 +20,9 @@
   },
   {
     "name": "claspy_features",
-    "description": "Extraction et transformation des features",
-    "tooltip": "Prépare les données pour ML/DL"
+    "description": "Calcul des attributs géométriques pour les nuages de points .LAS",
+    "egg": "claspy-features",
+    "link": "git+ssh://git@scienteama.local:22/algorithmie/machine-learning/claspy_features.git@vg-dev#egg=claspy-features",
+    "tooltip": "Calcul des features"
   }
 ]

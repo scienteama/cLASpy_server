@@ -18,6 +18,8 @@ class NotificationType(StrEnum):
     ML_TRAINING = "ml_training"
     ML_PREDICTION = "ml_prediction"
     ML_SEGMENTATION = "ml_segmentation"
+    ML_FEATURES = "ml_features"
+
     FILE_UPLOAD = "file_upload"
     FILE_DELETE = "file_delete"
 

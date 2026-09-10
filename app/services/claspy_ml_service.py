@@ -13,7 +13,6 @@ from app.core.config import Settings, get_settings
 from app.core.console import SocketConsole
 from app.schemas.train_schema import ModelInfo, PointCloudInfo, PredictParameters, TrainParameters
 from app.services.files_service import FileService
-from app.services.notifications_service import NotificationService
 from app.services.worker_service import WorkerService
 from app.services.ws_service import SocketIOService
 from app.utils.claspy_ml_utils import parse_cloud_points_info
@@ -46,7 +45,6 @@ class ClaspyMLService:
         self,
         file_service: FileService,
         worker_service: WorkerService,
-        notif_service: NotificationService,
         ws_service: SocketIOService,
     ):
         if ClaspyTrainer is not None:
@@ -73,6 +71,18 @@ class ClaspyMLService:
         if self.core_version is not None:
             return f"core_version : {self.core_version}"
         return "Plugin cLASpy_ML non chargé."
+
+    def _prepare_training_params(self, params: TrainParameters) -> TrainParameters:
+        """
+        Réduit la parallélisation des entraînements lancés depuis l'API afin
+        d'éviter les MemoryError lors de la sérialisation des résultats Loky.
+        """
+        if params.n_jobs in (None, 0, -1):
+            params.n_jobs = 1
+        elif params.n_jobs > 2:
+            params.n_jobs = 2
+
+        return params
 
     def get_all_algorithms(self) -> List[str]:
         """
@@ -253,6 +263,7 @@ class ClaspyMLService:
 
         params.user_id = int(req.state.user.id)
         params.role_id = int(req.state.user.role_id)
+        params = self._prepare_training_params(params)
 
         file = await self.file_service.get_file_by_id(params.file_id)
         file_path = await self.file_service.compute_physical_path(file)
