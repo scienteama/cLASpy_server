@@ -177,9 +177,7 @@ Pour activer HTTPS en développement, placez les certificats dans le dossier `ce
 
 Le serveur utilisera automatiquement HTTPS si ces fichiers sont présents (sauf en production).
 
-## Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+## Variables
 
 ### Variables principales
 
@@ -200,3 +198,42 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 ## Support
 
 Pour les questions ou problèmes, contactez l'équipe de développement.
+
+## License
+
+(See `LICENSE` file for further details).
+
+CeCILL FREE SOFTWARE LICENSE AGREEMENT
+
+Version 2.1 dated 2013-06-21
+
+### Notice
+
+This Agreement is a Free Software license agreement that is the result
+of discussions between its authors in order to ensure compliance with
+the two main principles guiding its drafting:
+
+- firstly, compliance with the principles governing the distribution
+    of Free Software: access to source code, broad rights granted to users,
+
+- secondly, the election of a governing law, French law, with which it
+    is conformant, both as regards the law of torts and intellectual
+    property law, and the protection that it offers to both authors and
+    holders of the economic rights over software.
+
+The authors of the CeCILL (for Ce[a] C[nrs] I[nria] L[ogiciel] L[ibre])
+license are:
+
+Commissariat à l'énergie atomique et aux énergies alternatives - CEA, a
+public scientific, technical and industrial research establishment,
+having its principal place of business at 25 rue Leblanc, immeuble Le
+Ponant D, 75015 Paris, France.
+
+Centre National de la Recherche Scientifique - CNRS, a public scientific
+and technological establishment, having its principal place of business
+at 3 rue Michel-Ange, 75794 Paris cedex 16, France.
+
+Institut National de Recherche en Informatique et en Automatique -
+Inria, a public scientific and technological establishment, having its
+principal place of business at Domaine de Voluceau, Rocquencourt, BP
+105, 78153 Le Chesnay cedex, France.
