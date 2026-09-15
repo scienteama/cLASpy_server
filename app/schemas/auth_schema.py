@@ -1,3 +1,5 @@
+from pydantic import ConfigDict
+from fastapi.openapi.models import EmailStr
 from typing import Any
 from fastapi import Response
 from pydantic import BaseModel, Field
@@ -44,3 +46,20 @@ def set_http_only_cookie(res: Response, config: CookieConfig):
             samesite=config.samesite,
             max_age=config.max_age,
         )
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    recovery_code: str | None = Field(default=None, alias="recoveryCode")
+    reset_token: str | None = Field(default=None, alias="resetToken")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=16,
+        alias="newPassword",
+    )
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )

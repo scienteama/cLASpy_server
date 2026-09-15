@@ -66,3 +66,12 @@ class UserUpdate(BaseModel):
     password: Optional[Annotated[str, constr(min_length=8)]] = None
     role_id: Optional[int] = None
     last_login: Optional[datetime] = None
+
+
+class RecoveryCodesResponse(BaseModel):
+    warning: str
+    formatted_codes: list[str]
+
+
+class UserWithRecoveryCodes(UserOut):
+    recovery_codes: RecoveryCodesResponse | None = None

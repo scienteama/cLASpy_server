@@ -1,3 +1,5 @@
+from app.services.recovery_service import RecoveryService
+from app.dao.recovery_dao import RecoveryDAO
 from app.services.claspy_feat_service import ClaspyFeatService
 from typing import Annotated
 from fastapi import Depends
@@ -47,6 +49,12 @@ def get_notification_dao(
     return NotificationDAO(db)
 
 
+def get_recovery_dao(
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+) -> RecoveryDAO:
+    return RecoveryDAO(db)
+
+
 # ------------------------------------------------------------------
 # NO DEPENDENCIES SERVICES
 # ------------------------------------------------------------------
@@ -72,8 +80,15 @@ def get_ws_service() -> SocketIOService:
 # ------------------------------------------------------------------
 
 
+def get_recovery_service(
+    recovery_dao: Annotated[RecoveryDAO, Depends(get_recovery_dao)],
+    ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
+) -> RecoveryService:
+    return RecoveryService(recovery_dao, ws_service)
+
+
 def get_notification_service(
-    notif_dao: Annotated[NotificationService, Depends(get_notification_dao)],
+    notif_dao: Annotated[NotificationDAO, Depends(get_notification_dao)],
     ws_service: Annotated[SocketIOService, Depends(get_ws_service)],
 ) -> NotificationService:
     return NotificationService(notif_dao, ws_service)
@@ -91,8 +106,9 @@ def get_user_service(
     user_dao: Annotated[UserDAO, Depends(get_user_dao)],
     file_service: Annotated[FileService, Depends(get_file_service)],
     notif_service: Annotated[NotificationService, Depends(get_notification_service)],
+    recovery_service: Annotated[RecoveryService, Depends(get_recovery_service)],
 ) -> UserService:
-    return UserService(user_dao, file_service, notif_service)
+    return UserService(user_dao, file_service, notif_service, recovery_service)
 
 
 def get_role_service(
@@ -103,8 +119,9 @@ def get_role_service(
 
 def get_auth_service(
     user_service: Annotated[UserService, Depends(get_user_service)],
+    recovery_service: Annotated[RecoveryService, Depends(get_recovery_service)],
 ) -> AuthService:
-    return AuthService(user_service)
+    return AuthService(user_service, recovery_service)
 
 
 def get_worker_service(

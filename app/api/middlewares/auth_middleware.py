@@ -5,6 +5,7 @@ from app.utils.auth_utils import extract_token, raise_auth_exception, verify_tok
 
 PUBLIC_ROUTES = {
     "/api/users/add-first",
+    "/api/auth/reset-password",
     "/api/auth/login",
     "/api/auth/check-session",
     "/api/modules/list/claspy-modules",

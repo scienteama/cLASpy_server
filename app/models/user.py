@@ -48,6 +48,12 @@ class User(Base):
         cascade="save-update, merge",
     )
 
+    recovery_codes = relationship(
+        "RecoveryCode",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self):
         return f"<User(id={self.id}, firstname='{self.firstname}', lastname='{self.lastname}', role_id={self.role_id})>"
 

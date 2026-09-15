@@ -1,3 +1,6 @@
+from app.schemas.user_schema import RecoveryCodesResponse
+from app.schemas.user_schema import UserWithRecoveryCodes
+from app.services.recovery_service import RecoveryService
 from http import HTTPStatus
 from fastapi import HTTPException
 from app.dao.user_dao import UserDAO
@@ -17,15 +20,20 @@ class UserService:
     """
 
     def __init__(
-        self, user_dao: UserDAO, file_service: FileService, notif_service: NotificationService
+        self,
+        user_dao: UserDAO,
+        file_service: FileService,
+        notif_service: NotificationService,
+        recovery_service: RecoveryService,
     ):
         self.userDAO = user_dao
         self.file_service = file_service
         self.notif_service = notif_service
+        self.recovery_service = recovery_service
 
     # --- CREATE ---
 
-    async def create_first_user(self, user_data: UserIn) -> UserOut:
+    async def create_first_user(self, user_data: UserIn) -> UserWithRecoveryCodes:
         """
         Crée le premier utilisateur (admin) si aucun utilisateur n'existe.
         """
@@ -49,9 +57,18 @@ class UserService:
         user.storage = UserStorage(storage_used_bytes=0)
         created_user = await self.userDAO.create(user)
 
-        return UserOut.model_validate(created_user)
+        # generate recovery codes
+        f_codes = await self.recovery_service.generate_and_display_codes(created_user.id)
 
-    async def create_user(self, user_data: UserIn) -> UserOut:
+        return UserWithRecoveryCodes(
+            **UserOut.model_validate(created_user).model_dump(),
+            recovery_codes=RecoveryCodesResponse(
+                warning="Attention, ces codes ne seront plus jamais affichés !",
+                formatted_codes=f_codes,
+            ),
+        )
+
+    async def create_user(self, user_data: UserIn) -> UserWithRecoveryCodes:
         """
         Crée un nouvel utilisateur en hachant son mot de passe.
         """
@@ -68,7 +85,16 @@ class UserService:
         user.storage = UserStorage(storage_used_bytes=0)
         created_user = await self.userDAO.create(user)
 
-        return UserOut.model_validate(created_user)
+        # generate recovery codes
+        f_codes = await self.recovery_service.generate_and_display_codes(created_user.id)
+
+        return UserWithRecoveryCodes(
+            **UserOut.model_validate(created_user).model_dump(),
+            recovery_codes=RecoveryCodesResponse(
+                warning="Attention, ces codes ne seront plus jamais affichés !",
+                formatted_codes=f_codes,
+            ),
+        )
 
     # --- READ ---
     async def get_user_by_id(self, user_id: int) -> UserOut:

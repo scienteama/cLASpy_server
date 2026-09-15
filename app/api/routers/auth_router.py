@@ -1,3 +1,7 @@
+from fastapi import Body
+from app.schemas.auth_schema import PasswordResetRequest
+from http import HTTPStatus
+from fastapi import HTTPException
 from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response
 from app.core.config import get_settings
@@ -50,3 +54,36 @@ async def check_session(request: Request):
     token_data, exp = verify_token(token)
 
     return ApiResponse(data=AuthResponse(isAuthenticated=True, exp=exp, sessionUserData=token_data))
+
+
+@router.post("/reset-password", response_model=ApiResponse[str])
+async def reset_password(
+    auth_service: AuthService = Depends(get_auth_service),
+    form_data: PasswordResetRequest = Body(...),
+) -> ApiResponse[str]:
+
+    if not form_data.recovery_code and not form_data.reset_token:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Fournissez soit un recoveryCode, soit un resetToken",
+        )
+
+    try:
+        if form_data.recovery_code:
+            result = await auth_service.reset_with_recovery_code(
+                form_data.email, form_data.recovery_code, form_data.new_password
+            )
+        elif form_data.reset_token:
+            result = await auth_service.reset_with_token(
+                form_data.email, form_data.reset_token, form_data.new_password
+            )
+
+        return ApiResponse[str](data=result)
+
+    except ValueError as e:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(e))
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        auth_service.log.error(f"Password reset failed: {str(e)}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR)

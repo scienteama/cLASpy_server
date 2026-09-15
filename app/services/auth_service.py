@@ -1,3 +1,4 @@
+from app.services.recovery_service import RecoveryService
 from datetime import datetime, timedelta, timezone
 import logging
 from fastapi import Response
@@ -14,8 +15,9 @@ class AuthService:
     Service de gestion d'authentification.
     """
 
-    def __init__(self, user_service: UserService):
+    def __init__(self, user_service: UserService, recovery_service: RecoveryService):
         self.user_service = user_service
+        self.recovery_service = recovery_service
         self.config = get_settings()
         self.log = logging.getLogger("app")
 
@@ -51,3 +53,17 @@ class AuthService:
     async def clear_auth_cookie(self, res: Response, key: str) -> str:
         res.delete_cookie(key, httponly=True)
         return "Déconnexion réussie"
+
+    async def reset_with_recovery_code(self, email: str, recovery_code: str, password: str) -> str:
+
+        code_id = await self.recovery_service.validate_recovery_code(email, recovery_code)
+
+        if not code_id:
+            raise_auth_exception("Aucun code de récupération valide trouvé")
+
+        user = await self.user_service.get_user_by_email(email)
+        await self.user_service.update_user_by_id(user.id, UserUpdate(password=password))
+
+        await self.recovery_service.mark_as_used(code_id)
+
+        return "Mot de passe réinitialisé avec succès"

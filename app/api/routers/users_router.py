@@ -1,3 +1,4 @@
+from app.schemas.user_schema import UserWithRecoveryCodes
 from typing import Annotated, List
 from fastapi import APIRouter, Body, Request
 from app.core.provider import get_user_service
@@ -9,7 +10,7 @@ from app.services.users_service import UserService
 router = APIRouter()
 
 
-@router.post("/add-first", response_model=ApiResponse[UserOut])
+@router.post("/add-first", response_model=ApiResponse[UserWithRecoveryCodes])
 async def register_first_user(
     req: Request,
     user_service: Annotated[UserService, Depends(get_user_service)],
@@ -19,10 +20,10 @@ async def register_first_user(
     Crée le premier utilisateur (admin) si aucun utilisateur n'existe.
     """
     new_user = await user_service.create_first_user(user)
-    return ApiResponse[UserOut](data=new_user)
+    return ApiResponse[UserWithRecoveryCodes](data=new_user)
 
 
-@router.post("/add", response_model=ApiResponse[UserOut])
+@router.post("/add", response_model=ApiResponse[UserWithRecoveryCodes])
 async def register_user(
     req: Request,
     user_service: Annotated[UserService, Depends(get_user_service)],
@@ -32,7 +33,7 @@ async def register_user(
     Crée un nouvel utilisateur.
     """
     new_user = await user_service.create_user(user)
-    return ApiResponse[UserOut](data=new_user)
+    return ApiResponse[UserWithRecoveryCodes](data=new_user)
 
 
 @router.patch("/update/{user_id}", response_model=ApiResponse[UserOut])
